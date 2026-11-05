@@ -1,0 +1,6 @@
+import {createArchiveUpload} from '../web/archive-client.js';import fs from 'node:fs/promises';import assert from 'node:assert/strict';
+const fetchReal=globalThis.fetch;let dropped=false,requests=0;
+globalThis.fetch=async(url,options)=>{const absolute=new URL(url,'http://127.0.0.1:8765');const response=await fetchReal(absolute,options);if(absolute.pathname.includes('/parts/')){requests++;if(!dropped&&response.ok){dropped=true;throw new TypeError('Injected lost success acknowledgement');}}return response;};
+const output=await createArchiveUpload(205,new AbortController().signal),data=await fs.readFile('tests/fixtures/layout.png');
+for(let i=0;i<205;i++)await output.append(new Blob([data],{type:'image/png'}),`image-${i}.png`);
+const finished=await output.finish();assert.equal(finished.files,205);assert.equal(requests,3);const response=await fetchReal(new URL(finished.downloadUrl,'http://127.0.0.1:8765'));assert.equal(response.status,200);await fs.writeFile('work/archive-client-205.zip',Buffer.from(await response.arrayBuffer()));await fetchReal(new URL(finished.downloadUrl.replace('/download',''),'http://127.0.0.1:8765'),{method:'DELETE'});console.log('PASS 205 PNG files across two bounded parts, lost acknowledgement retried exactly once without duplicate outputs, native URL complete');

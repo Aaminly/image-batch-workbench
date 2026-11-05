@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {createDrafts,draftSnapshot} from '../web/drafts.js';import {createProject,addVariant} from '../web/state.js';
+test('恢复失败后即便导出空白备份也不能用新批次覆盖旧检查点',async()=>{const p=createProject();addVariant(p,300,250);const drafts=createDrafts({snapshot:()=>draftSnapshot(p,{currentId:'300x250',excludedExportSizes:[]}),isBusy:()=>false,status:()=>{},saved:()=>{}});drafts.failed();drafts.backedUp();await drafts.flush();assert.throws(()=>drafts.startBatch({id:'a'.repeat(32),revision:0}),/检查点|恢复/);});

@@ -1,0 +1,29 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+const browser=await chromium.launch({channel:'chrome',headless:true});
+try{
+ const page=await browser.newPage({acceptDownloads:true,viewport:{width:1440,height:1000}});
+ await page.goto('http://127.0.0.1:8765');await page.locator('#draft-new').click();
+ await page.locator('#image-input').setInputFiles('tests/fixtures/layout.png');await page.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
+ await page.locator('[data-size="970x90"]').click();
+ assert.equal(await page.locator('#export-sizes input:checked').count(),2);
+ await page.locator('#export-sizes input[value="970x90"]').uncheck();
+ assert.equal(await page.locator('#variant-select option').count(),2);
+ let event=page.waitForEvent('download');await page.locator('#export-all').click();await(await event).saveAs('work/selected-export.zip');
+ await page.locator('#export-none').click();assert.equal(await page.locator('#export-all').isDisabled(),true);
+ await page.locator('#export-select-all').click();assert.equal(await page.locator('#export-sizes input:checked').count(),2);
+ event=page.waitForEvent('download');await page.locator('#export-png').click();const download=await event;assert.equal(download.suggestedFilename(),'970x90.png');await download.saveAs('work/compressed-single.png');
+ const saved=page.waitForEvent('download');await page.locator('#save-project').click();await(await saved).saveAs('work/selection-project.json');
+ await page.locator('#export-none').click();await page.locator('#project-input').setInputFiles('work/selection-project.json');await page.locator('#notice').filter({hasText:'项目已打开'}).waitFor({state:'attached'});assert.equal(await page.locator('#export-sizes input:checked').count(),2);
+ await page.screenshot({path:'work/export-selection-desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:'work/export-selection-mobile.png',fullPage:true});
+ await page.locator('#export-sizes input[value="970x90"]').uncheck();
+ const {execFileSync}=await import('node:child_process');
+ execFileSync('.venv/bin/python',['-c',"from PIL import Image;Image.new('RGB',(300,250),'navy').save('work/bg300.png')"]);
+ await page.locator('#background-files').setInputFiles([{name:'same.png',mimeType:'image/png',buffer:await fs.readFile('work/bg300.png')},{name:'same.png',mimeType:'image/png',buffer:await fs.readFile('work/bg300.png')}]);
+ await page.locator('#notice').filter({hasText:'已导入 2 张背景'}).waitFor({state:'attached'});assert.equal(await page.locator('#export-all').isEnabled(),true);
+ event=page.waitForEvent('download');await page.locator('#export-all').click();await(await event).saveAs('work/multi-selected-export.zip');
+ execFileSync('.venv/bin/python',['-c',"import zipfile;z=zipfile.ZipFile('work/selected-export.zip');assert z.namelist()==['300x250.png'];z=zipfile.ZipFile('work/multi-selected-export.zip');n=z.namelist();assert len(n)==2 and len(set(n))==2 and all('/' not in x and x.startswith('300x250-') for x in n) and not any('970x90' in x for x in n),n"]);
+ console.log('selection, unchanged project sizes, ZIP and single PNG passed');
+}finally{await browser.close();}

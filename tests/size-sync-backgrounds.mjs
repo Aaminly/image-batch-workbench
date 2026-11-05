@@ -1,0 +1,12 @@
+import {chromium} from 'playwright';import assert from 'node:assert/strict';import fs from 'node:fs/promises';
+const browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage({viewport:{width:1600,height:1000},acceptDownloads:true});page.setDefaultTimeout(15000);page.on('dialog',d=>d.accept());
+try{
+ await page.goto('http://127.0.0.1:8765');await page.waitForFunction(()=>!document.querySelector('#model-status').textContent.includes('正在检查'));await page.locator('#draft-new').click();await page.locator('#notice').filter({hasText:'已新建批次'}).waitFor({state:'attached'});const project=JSON.parse(await fs.readFile('work/sync-initial.json','utf8'));
+ project.backgrounds=await page.evaluate(()=>[[300,250,'#ff0000','red'],[600,900,'#0000ff','blue']].map(([width,height,color,id])=>{const c=document.createElement('canvas');c.width=width;c.height=height;const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,width,height);return{id,name:id,data:c.toDataURL(),width,height};}));
+ project.backgroundMode='matched';await fs.writeFile('work/sync-background-fixture.json',JSON.stringify(project));await page.locator('#project-input').setInputFiles('work/sync-background-fixture.json');await page.locator('#notice').filter({hasText:'项目已打开'}).waitFor({state:'attached'});
+ assert.deepEqual(await page.locator('#preview').evaluate(c=>[...c.getContext('2d').getImageData(1,1,1,1).data]),[255,0,0,255]);await page.locator('#variant-select').selectOption('1080x1920');
+ await page.waitForFunction(()=>{const c=document.querySelector('[data-variant="600x900"] canvas');return c&&c.width>1&&c.getContext('2d').getImageData(1,1,1,1).data[2]===255;});
+ assert.equal(await page.locator('[data-variant="600x900"] .preview-warning').innerText(),'');await page.locator('#variant-select').selectOption('600x900');
+ await page.locator('#sync-sizes').check();await page.locator('#background-framing summary').click();await page.locator('#bg-x').evaluate(el=>{el.value='.2';el.dispatchEvent(new Event('input',{bubbles:true}));});assert.equal(await page.evaluate(()=>document.querySelector('#background-list .background-choice[aria-pressed="true"]')?.dataset.background||''),'blue');await page.locator('#variant-select').selectOption('1080x1920');assert.equal(Number(await page.locator('#bg-x').inputValue()),.5);
+ await page.screenshot({path:'work/sync-backgrounds.png'});console.log('PASS per-size background decode, correct main/thumbnail colors, unmatched warning, independent focus, switch background');
+}finally{await browser.close();}

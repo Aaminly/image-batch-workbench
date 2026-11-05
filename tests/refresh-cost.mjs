@@ -1,0 +1,9 @@
+import {chromium} from 'playwright';import assert from 'node:assert/strict';import fs from 'node:fs/promises';
+const b=await chromium.launch({channel:'chrome',headless:true}),p=await b.newPage(),base=process.env.STUDIO_URL||'http://127.0.0.1:18766';try{
+ await p.goto(`${base}/style.css`);const image='data:image/png;base64,'+(await fs.readFile('tests/fixtures/astronaut.png')).toString('base64');const result=await p.evaluate(async image=>{
+ const {openRecovery}=await import('/recovery.js'),{draftSnapshot}=await import('/drafts.js'),{createProject,addAllPresets}=await import('/state.js'),r=await openRecovery(),project=createProject();addAllPresets(project);project.assets.original=project.assets.logo=image;
+ const history=Array.from({length:11},(_,n)=>({...project,copy:{...project.copy,title:`历史${n}`}})),sync=[],durable=[];
+ for(let n=1;n<=20;n++){history[10]={...history[10],copy:{...history[10].copy,title:`连续编辑${n}`}};const start=performance.now(),states=history.map(project=>draftSnapshot(project,{currentId:project.variants[0].id,excludedExportSizes:[]})),done=r.write({id:null,revision:0,localVersion:n,cursor:10,pendingCommit:null},states);sync.push(performance.now()-start);await done;durable.push(performance.now()-start);}
+ const db=await new Promise(ok=>{const q=indexedDB.open('ad-studio-recovery');q.onsuccess=()=>ok(q.result);}),images=await new Promise(ok=>{const q=db.transaction('images').objectStore('images').count();q.onsuccess=()=>ok(q.result);});db.close();await r.clear();return {variants:38,states:11,edits:20,distinctImages:images,syncMedianMs:sync.sort((a,b)=>a-b)[10],syncMaxMs:Math.max(...sync),commitMedianMs:durable.sort((a,b)=>a-b)[10],commitMaxMs:Math.max(...durable)};
+ },image);assert.equal(result.distinctImages,1);await fs.writeFile('work/refresh-cost.json',JSON.stringify(result,null,2));console.log(result);
+}finally{await b.close();}

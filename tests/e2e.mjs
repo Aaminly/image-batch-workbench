@@ -1,0 +1,41 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+await fs.mkdir('work',{recursive:true});
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1000},acceptDownloads:true});
+page.on('dialog',dialog=>dialog.accept());
+const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+try {
+ await page.goto('http://127.0.0.1:8765');await page.locator('#draft-new').click();
+ await page.getByRole('heading',{name:'图片批处理工作台',exact:true}).waitFor({timeout:4000});
+ await page.locator('#image-input').setInputFiles('tests/fixtures/layout.png');
+ await page.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
+ await page.locator('#title').fill('好故事\n即刻开启');
+ await page.locator('#subtitle').fill('每一天，都有新的精彩');
+ await page.locator('#cta').fill('立即观看 →');
+ await page.locator('[data-size="970x90"]').click();
+ await page.locator('[data-size="120x600"]').click();
+ await page.locator('#variant-select').selectOption('970x90');
+ await page.locator('#scale').fill('1.3');await page.locator('#scale').dispatchEvent('input');
+ await page.locator('#variant-select').selectOption('300x250');assert.equal(await page.locator('#scale').inputValue(),'1');
+ await page.locator('#background').selectOption('transparent');
+ const downloadEvent=page.waitForEvent('download');await page.locator('#export-png').click();await (await downloadEvent).saveAs('work/actual-300x250.png');
+ const saveEvent=page.waitForEvent('download');await page.locator('#save-project').click();await (await saveEvent).saveAs('work/roundtrip.adproject.json');
+ await page.locator('#title').fill('临时内容');await page.locator('#project-input').setInputFiles('work/roundtrip.adproject.json');
+ await page.locator('#notice').filter({hasText:'项目已打开'}).waitFor({state:'attached'});assert.equal(await page.locator('#title').inputValue(),'好故事\n即刻开启');
+ await fs.writeFile('work/bad.adproject.json','{"version":999}');await page.locator('#project-input').setInputFiles('work/bad.adproject.json');
+ await page.locator('#notice').filter({hasText:'项目格式'}).waitFor({state:'attached'});assert.equal(await page.locator('#title').inputValue(),'好故事\n即刻开启');
+ const zipEvent=page.waitForEvent('download');await page.locator('#export-all').click();await(await zipEvent).saveAs('work/export.zip');
+ await page.locator('#notice').filter({hasText:'已生成'}).waitFor({state:'attached'});
+ await page.screenshot({path:'work/desktop.png',fullPage:true});
+ await page.locator('#title').fill('这是一段需要完整保留的很长文案'.repeat(20));
+ await page.locator('#warnings').filter({hasText:'文字'}).waitFor();
+ const mobile=await browser.newPage({viewport:{width:390,height:844}});await mobile.goto('http://127.0.0.1:8765');await mobile.locator('#draft-new').click();
+ await mobile.locator('#image-input').setInputFiles('tests/fixtures/layout.png');await mobile.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
+ await mobile.locator('#title').fill('这是一段需要完整保留的很长文案'.repeat(20));
+ for(const [name,y] of [['top',0],['middle',800],['bottom',10000]]){await mobile.evaluate(y=>scrollTo(0,y),y);await mobile.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));await mobile.screenshot({path:`work/mobile-${name}.png`});}
+ assert.ok(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'mobile viewport must not overflow horizontally');await mobile.close();
+ assert.deepEqual(errors,[]);
+ console.log('PASS: import, independent layouts, transparent PNG, project roundtrip, atomic bad import, ZIP, long text, mobile, no page errors');
+}finally{await browser.close();}

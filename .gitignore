@@ -1,0 +1,22 @@
+.venv/
+.models/
+node_modules/
+work/
+__pycache__/
+*.pyc
+.DS_Store
+
+.local/
+
+# Local tooling and internal development records
+.impeccable/
+.taste-skill/
+PRODUCT.md
+DESIGN.md
+docs/superpowers/
+docs/spec.md
+docs/verification.md
+docs/canvas-interaction-audit.md
+.env
+.env.*
+!.env.example
