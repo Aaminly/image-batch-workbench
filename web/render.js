@@ -6,6 +6,7 @@ const decodedMedia=new Map();
 export function variantAssets(project,variant,assets){
  const effective=contentFor(project,variant),result={...assets};
  for(const key of MEDIA_KEYS){const data=effective.assets[key];if(data&&decodedMedia.has(data))result[key]=decodedMedia.get(data);else if(data===null||Object.hasOwn(variant?.content||{},key))result[key]=null;}
+ for(const e of variant?.elements||[])if(e.type==='image')result[e.id]=decodedMedia.get(project.media?.[e.media])||null;
  return result;
 }
 export {FONT} from './text-layout.js';
@@ -18,6 +19,7 @@ export async function loadImage(src){
 }
 export async function loadAssets(project){
  const live=new Set(Object.values(project.assets).filter(Boolean));
+ for(const v of project.variants)for(const e of v.elements||[])if(e.type==='image')live.add(project.media[e.media]);
  for(const content of [...project.variants.map(v=>v.content),project.sharedBaseline])for(const key of MEDIA_KEYS)if(content?.[key])live.add(project.media[content[key]]);
  await Promise.all([...live].map(async data=>{if(!decodedMedia.has(data))decodedMedia.set(data,await loadImage(data));}));
  for(const key of decodedMedia.keys())if(!live.has(key))decodedMedia.delete(key);
@@ -51,8 +53,13 @@ export function render(canvas,p,v,assets,{pixelWidth=v.width,pixelHeight=v.heigh
   if(Math.min(r.w,r.h)<40)warnings.push('主体显示较小，请以实际像素检查细节');
  }
  if(assets.logo){const logo=assets.logo,r=mediaRect(v,'logo',logo);ctx.drawImage(logo,r.x,r.y,r.w,r.h);regions.logo=r;if(outside(r,w,h))warnings.push('Logo超出画布');}
- ctx.textBaseline='top';const layers=layoutText(ctx,p,v);paintText(ctx,layers,v.accent);
- regions.layers=Object.fromEntries(layers.map(layer=>[layer.id,layer]));regions.text=unionRects(layers.map(layer=>layer.rect));
+ ctx.textBaseline='top';const layers=layoutText(ctx,p,v);paintText(ctx,layers.filter(l=>!l.id.startsWith('element-')),v.accent);
+ regions.added=[];
+ for(const e of v.elements||[]){
+  if(e.type==='image'){const img=assets[e.id];if(!img)continue;const r=mediaRect(v,e.id,img);ctx.drawImage(img,r.x,r.y,r.w,r.h);regions.added.push({id:e.id,frameRect:r,rect:r,hitRects:[r]});if(outside(r,w,h))warnings.push('新增图片超出画布');if(r.w>img.width*1.01||r.h>img.height*1.01)warnings.push('新增图片放大超过原始分辨率');}
+  else {const layer=layers.find(l=>l.id===e.id);if(layer){paintText(ctx,[layer],e.accent);regions.added.push(layer);}}
+ }
+ regions.layers=Object.fromEntries([...layers,...regions.added].map(layer=>[layer.id,layer]));regions.text=unionRects(layers.map(layer=>layer.rect));
  for(const layer of layers){warnings.push(...layer.warnings);if(outside(layer.rect,w,h))warnings.push('文字或效果超出画布；请调整位置、字号或效果范围，文案未被删除');}
  if(overlaps(regions.image,regions.text))warnings.push('图片与文字区域重叠，请检查是否遮挡主体');
  return {warnings:[...new Set(warnings)],regions};

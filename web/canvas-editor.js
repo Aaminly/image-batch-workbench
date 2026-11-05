@@ -1,13 +1,16 @@
+import {elementFor} from './elements.js';
 import {clampPosition} from './state.js';
 import {resizeLayer,TEXT_IDS} from './layer-geometry.js';
 function contains(r,x,y){return r&&x>=r.x&&y>=r.y&&x<=r.x+r.w&&y<=r.y+r.h;}
 function intersect(a,b){const x=Math.max(a.x,b.x),y=Math.max(a.y,b.y);return{x,y,w:Math.min(a.x+a.w,b.x+b.w)-x,h:Math.min(a.y+a.h,b.y+b.h)-y};}
 export function hitTest(regions,v,x,y){
+ for(const layer of [...(regions.added||[])].reverse())if(layer.hitRects.some(r=>contains(r,x,y)))return layer.id;
  for(const id of ['cta','subtitle','title'])if(regions.layers?.[id]?.hitRects.some(rect=>contains(rect,x,y)))return id;
  if(contains(regions.logo,x,y))return'logo';
  let image=regions.image;if(image&&v.crop)image=intersect(image,v.box);if(contains(image,x,y))return'image';return null;
 }
 export function moveLayer(variant,id,start,dx,dy){
+ const added=elementFor(variant,id),old=elementFor(start,id);if(added&&old){added.x=clampPosition(old.x+dx);added.y=clampPosition(old.y+dy);return;}
  if(TEXT_IDS.includes(id)){variant.textLayers[id].dx=clampPosition(start.textLayers[id].dx+dx);variant.textLayers[id].dy=clampPosition(start.textLayers[id].dy+dy);}
  else if(id==='image'){variant.dx=clampPosition(start.dx+dx);variant.dy=clampPosition(start.dy+dy);}
  else if(id==='logo'){variant.logoX=clampPosition(start.logoX+dx,-6000);variant.logoY=clampPosition(start.logoY+dy,-6000);}

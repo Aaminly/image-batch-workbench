@@ -1,3 +1,5 @@
+import {sameEditDomain} from './locks.js';
+import {copyElements} from './elements.js';
 // 所有尺寸按近似比例归组：近方形长短边比≤1.25，横幅/窄竖版长短边比≥2.5。
 import {MEDIA_KEYS,contentFor,SHARED_KEYS,inheritGroupContent} from './shared-content.js';
 export function sizeGroupName(w,h){if(Math.max(w,h)*4<=Math.min(w,h)*5)return '方形';if(w>h)return w*2>=h*5?'横幅':'横版';return h*2>=w*5?'窄竖版':'竖版';}
@@ -21,12 +23,12 @@ export function defaultVariant(w,h){
  if(r>=1.6){box={x:pad,y:pad,w:w*.43-pad*2,h:h-pad*2};text={x:w*.47,y:pad,w:w*.49-pad};}
  else if(r<.45){box={x:pad,y:pad,w:w-pad*2,h:h*.48-pad};text={x:pad,y:h*.53,w:w-pad*2};}
  else {box={x:pad,y:pad,w:w-pad*2,h:h*.57-pad};text={x:pad,y:h*.62,w:w-pad*2};}
- return {id:`${w}x${h}`,locked:false,width:w,height:h,box,text,scale:1,dx:0,dy:0,crop:false,imageScaleX:1,imageScaleY:1,logoScaleX:1,logoScaleY:1,feather:0,textLayers:defaultTextLayers(),backgroundPreference:null,bgZoom:1,bgX:.5,bgY:.5,fontSize:Math.max(8,Math.round(Math.min(w*.088,h*.18))),textColor:'#ffffff',accent:'#ffb35c',background:'solid',color:'#17242b',color2:'#3c5966',logoX:pad,logoY:pad,logoWidth:Math.min(w*.2,h*.18)};
+ return {id:`${w}x${h}`,elements:[],locked:false,width:w,height:h,box,text,scale:1,dx:0,dy:0,crop:false,imageScaleX:1,imageScaleY:1,logoScaleX:1,logoScaleY:1,feather:0,textLayers:defaultTextLayers(),backgroundPreference:null,bgZoom:1,bgX:.5,bgY:.5,fontSize:Math.max(8,Math.round(Math.min(w*.088,h*.18))),textColor:'#ffffff',accent:'#ffb35c',background:'solid',color:'#17242b',color2:'#3c5966',logoX:pad,logoY:pad,logoWidth:Math.min(w*.2,h*.18)};
 }
 export function addVariant(p,w,h){
  if(!Number.isInteger(w)||!Number.isInteger(h)||w<24||h<24||w>6000||h>6000||w*h>16000000)throw Error('尺寸需为24–6000之间的整数，且不超过1600万像素');
  if(p.variants.length>=40)throw Error('每个项目最多40个尺寸');
- const v=defaultVariant(w,h);if(p.variants.some(a=>a.id===v.id))throw Error('该尺寸已存在');p.variants.push(v);inheritGroupContent(p,v);return v;
+ const v=defaultVariant(w,h);if(p.variants.some(a=>a.id===v.id))throw Error('该尺寸已存在');const peer=p.variants.find(other=>sameEditDomain(p,v,other));p.variants.push(v);inheritGroupContent(p,v);if(peer)copyElements(peer,v);return v;
 }
 export function updateVariant(p,id,patch){const v=p.variants.find(a=>a.id===id);if(!v)throw Error('尺寸不存在');Object.assign(v,patch);return v;}
 const finite=(n,min,max)=>typeof n==='number'&&Number.isFinite(n)&&n>=min&&n<=max;
@@ -59,7 +61,7 @@ export function validateProject(input,checkContent=true){
  for(const k of MEDIA_KEYS){const a=p.assets[k];if(a!==null&&(typeof a!=='string'||a.length>45000000||!/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+=*$/.test(a)))throw Error('项目素材必须是内嵌PNG或JPEG');}
  if(!checkContent&&p.source==='cutout'&&!p.assets.cutout)throw Error('项目缺少抠图素材');
  for(const k of ['title','subtitle','cta'])if(typeof p.copy[k]!=='string'||p.copy[k].length>2000)throw Error('文案长度或格式无效');
- const ids=new Set();
+ const ids=new Set(),elementTypes=new Map();
  for(const v of p.variants){
   if(!Object.hasOwn(v,'locked'))v.locked=false;
   if(typeof v.locked!=='boolean')throw Error('尺寸锁定状态无效');
@@ -69,15 +71,15 @@ export function validateProject(input,checkContent=true){
   if(v.backgroundPreference!==null&&!contentFor(p,v).backgrounds.some(b=>b.id===v.backgroundPreference))throw Error('尺寸引用的背景不存在');
   if(!Object.hasOwn(v,'textLayers'))v.textLayers=defaultTextLayers();
   if(!v.textLayers||Array.isArray(v.textLayers)||typeof v.textLayers!=='object')throw Error('文字图层无效');
-  for(const key of ['title','subtitle','cta']){const layer=v.textLayers[key];if(!layer||Array.isArray(layer)||typeof layer!=='object')throw Error('文字图层无效');
-   for(const field of ['scaleX','scaleY','width','height','separatorEnabled','fontWeight','italic','underline','underlineColor','separatorColor','separatorWidth','separatorHeight'])if(!Object.hasOwn(layer,field))layer[field]=defaultTextLayer()[field];
-   if(!finite(layer.scaleX,.01,100)||!finite(layer.scaleY,.01,100))throw Error('文字缩放无效');
-   if(layer.width!==null&&!finite(layer.width,1,12000))throw Error('文字宽度无效');
-   if(layer.height!==null&&!finite(layer.height,1,12000))throw Error('文字高度无效');
-   if((layer.fontWeight!==null&&!finite(layer.fontWeight,100,900))||typeof layer.separatorEnabled!=='boolean'||typeof layer.italic!=='boolean'||!['none','straight','swoosh'].includes(layer.underline)||!color(layer.underlineColor)||!color(layer.separatorColor)||!finite(layer.separatorWidth,.1,30)||!finite(layer.separatorHeight,.1,1.5))throw Error('文字装饰样式无效');
-   for(const [field,min,max]of [['dx',-12000,12000],['dy',-12000,12000],['strokeWidth',0,30],['shadowOpacity',0,1],['shadowBlur',0,100],['shadowX',-1000,1000],['shadowY',-1000,1000]])if(!finite(layer[field],min,max))throw Error('文字效果数值无效');
-   if(layer.fontSize!==null&&!finite(layer.fontSize,4,1000))throw Error('文字字号无效');
-   if((layer.color!==null&&!color(layer.color))||!color(layer.strokeColor)||!color(layer.shadowColor)||typeof layer.shadowEnabled!=='boolean')throw Error('文字效果样式无效');
+  for(const key of ['title','subtitle','cta'])validateTextLayer(v.textLayers[key]);
+  if(v.elements===undefined)v.elements=[];
+  if(!Array.isArray(v.elements))throw Error('新增元素列表无效');
+  const elementIds=new Set();
+  for(const e of v.elements){
+   if(!e||typeof e.id!=='string'||!/^element-[-\w]{1,80}$/.test(e.id)||elementIds.has(e.id)||!['text','button','image'].includes(e.type)||!finite(e.x,-12000,12000)||!finite(e.y,-12000,12000))throw Error('新增元素无效');
+   elementIds.add(e.id);if(elementTypes.has(e.id)&&elementTypes.get(e.id)!==e.type)throw Error('同一元素的类型不一致');elementTypes.set(e.id,e.type);
+   if(e.type==='image'){if(!Object.hasOwn(p.media||{},e.media)||!finite(e.width,1,12000)||!finite(e.height,1,12000)||!finite(e.scaleX,.01,100)||!finite(e.scaleY,.01,100))throw Error('新增图片无效');}
+   else {if(typeof e.text!=='string'||e.text.length>2000||!color(e.accent))throw Error('新增文案或按钮无效');validateTextLayer(e.style);if(e.style.dx!==0||e.style.dy!==0)throw Error('新增文字位置无效');}
   }
 
   for(const [key,value]of [['bgZoom',1],['bgX',.5],['bgY',.5]])if(!Object.hasOwn(v,key))v[key]=value;
@@ -95,4 +97,16 @@ export function validateBackgroundBatch(project,files){
  let encodedBytes=0;
  for(const file of files){if(!['image/png','image/jpeg'].includes(file.type)||!Number.isSafeInteger(file.size)||file.size<=0||file.size>32*1024*1024)throw Error(`${file.name}：请使用32 MB以内的PNG/JPEG`);encodedBytes+=4*Math.ceil(file.size/3)+22;}
  if(new TextEncoder().encode(JSON.stringify(project)).byteLength+encodedBytes>MAX_PROJECT_BYTES)throw Error('加入这批背景后项目将超过120 MB，请减少数量或缩小文件');
+}
+
+export function validateTextLayer(layer){
+ if(!layer||Array.isArray(layer)||typeof layer!=='object')throw Error('文字图层无效');
+   for(const field of ['scaleX','scaleY','width','height','separatorEnabled','fontWeight','italic','underline','underlineColor','separatorColor','separatorWidth','separatorHeight'])if(!Object.hasOwn(layer,field))layer[field]=defaultTextLayer()[field];
+   if(!finite(layer.scaleX,.01,100)||!finite(layer.scaleY,.01,100))throw Error('文字缩放无效');
+   if(layer.width!==null&&!finite(layer.width,1,12000))throw Error('文字宽度无效');
+   if(layer.height!==null&&!finite(layer.height,1,12000))throw Error('文字高度无效');
+   if((layer.fontWeight!==null&&!finite(layer.fontWeight,100,900))||typeof layer.separatorEnabled!=='boolean'||typeof layer.italic!=='boolean'||!['none','straight','swoosh'].includes(layer.underline)||!color(layer.underlineColor)||!color(layer.separatorColor)||!finite(layer.separatorWidth,.1,30)||!finite(layer.separatorHeight,.1,1.5))throw Error('文字装饰样式无效');
+   for(const [field,min,max]of [['dx',-12000,12000],['dy',-12000,12000],['strokeWidth',0,30],['shadowOpacity',0,1],['shadowBlur',0,100],['shadowX',-1000,1000],['shadowY',-1000,1000]])if(!finite(layer[field],min,max))throw Error('文字效果数值无效');
+   if(layer.fontSize!==null&&!finite(layer.fontSize,4,1000))throw Error('文字字号无效');
+   if((layer.color!==null&&!color(layer.color))||!color(layer.strokeColor)||!color(layer.shadowColor)||typeof layer.shadowEnabled!=='boolean')throw Error('文字效果样式无效');
 }

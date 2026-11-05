@@ -6,7 +6,7 @@ export function drawPreview(canvas,project,variant,assets,stage,mode='fit'){
   const zoom=parseFloat(surface.style.width)/variant.width,cssWidth=variant.width*zoom,cssHeight=variant.height*zoom,density=Math.min((window.devicePixelRatio||1)*Number(stage.dataset.zoom||1),Math.sqrt(8000000/(cssWidth*cssHeight)));
   canvas.style.width=`${cssWidth}px`;canvas.style.height=`${cssHeight}px`;
   const result=render(canvas,project,variant,assets,{pixelWidth:Math.max(1,Math.round(cssWidth*density)),pixelHeight:Math.max(1,Math.round(cssHeight*density))});
-  const bounds=unionRects([{x:0,y:0,w:variant.width,h:variant.height},result.regions.image,result.regions.logo,...Object.values(result.regions.layers).flatMap(l=>[l.rect,l.frameRect])].filter(Boolean));
+  const bounds=unionRects([{x:0,y:0,w:variant.width,h:variant.height},result.regions.image,result.regions.logo,...(result.regions.added||[]).map(l=>l.rect),...Object.values(result.regions.layers).flatMap(l=>[l.rect,l.frameRect])].filter(Boolean));
   const viewport={x:Math.floor(Math.min(0,bounds.x)-20/zoom),y:Math.floor(Math.min(0,bounds.y)-20/zoom)};viewport.w=Math.ceil(Math.max(variant.width,bounds.x+bounds.w)+20/zoom)-viewport.x;viewport.h=Math.ceil(Math.max(variant.height,bounds.y+bounds.h)+20/zoom)-viewport.y;
   let overflow=surface.querySelector('.overflow-preview');if(!overflow){overflow=document.createElement('canvas');overflow.className='overflow-preview';overflow.setAttribute('aria-hidden','true');surface.prepend(overflow);}
   Object.assign(overflow.style,{left:`${viewport.x*zoom}px`,top:`${viewport.y*zoom}px`,width:`${viewport.w*zoom}px`,height:`${viewport.h*zoom}px`});
@@ -25,7 +25,7 @@ export function drawPreview(canvas,project,variant,assets,stage,mode='fit'){
  const result=render(canvas,project,variant,assets,{pixelWidth:Math.max(1,Math.round(cssWidth*density)),pixelHeight:Math.max(1,Math.round(cssHeight*density))});
  let image=result.regions.image;
  if(image&&variant.crop){const b=variant.box,x=Math.max(image.x,b.x),y=Math.max(image.y,b.y);image={x,y,w:Math.max(0,Math.min(image.x+image.w,b.x+b.w)-x),h:Math.max(0,Math.min(image.y+image.h,b.y+b.h)-y)};}
- const bounds=unionRects([{x:0,y:0,w:variant.width,h:variant.height},image,result.regions.logo,...Object.values(result.regions.layers).flatMap(l=>[l.rect,l.frameRect])].filter(Boolean));
+ const bounds=unionRects([{x:0,y:0,w:variant.width,h:variant.height},image,result.regions.logo,...(result.regions.added||[]).map(l=>l.rect),...Object.values(result.regions.layers).flatMap(l=>[l.rect,l.frameRect])].filter(Boolean));
  const viewport={x:Math.floor(Math.min(0,bounds.x)-28/zoom),y:Math.floor(Math.min(0,bounds.y)-28/zoom)};
  viewport.w=Math.ceil(Math.max(variant.width,bounds.x+bounds.w)+28/zoom)-viewport.x;
  viewport.h=Math.ceil(Math.max(variant.height,bounds.y+bounds.h)+28/zoom)-viewport.y;

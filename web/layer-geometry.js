@@ -1,13 +1,28 @@
+import {elementFor} from './elements.js';
 import {imageRect,clampPosition} from './state.js';
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 export const TEXT_IDS=['title','subtitle','cta'];
 export function mediaRect(v,id,image){
+ const added=elementFor(v,id);if(added)return {x:added.x,y:added.y,w:added.width*added.scaleX,h:added.height*added.scaleY};
  if(id==='logo')return{x:v.logoX,y:v.logoY,w:v.logoWidth*(v.logoScaleX??1),h:v.logoWidth*image.height/image.width*(v.logoScaleY??1)};
  const b=imageRect(image.width,image.height,v.box,v.scale,0,0),w=b.w*(v.imageScaleX??1),h=b.h*(v.imageScaleY??1);
  const r={x:v.box.x+(v.box.w-w)/2+v.dx,y:v.box.y+(v.box.h-h)/2+v.dy,w,h};
  if(!v.crop){const fit=Math.min(1,v.width/r.w,v.height/r.h);r.w*=fit;r.h*=fit;}return r;
 }
 export function resizeLayer(v,id,start,frame,side,dx,dy,assets={}){
+ const added=elementFor(v,id),oldAdded=elementFor(start,id);
+ if(added&&oldAdded){
+  const text=added.type!=='image',style=text?added.style:added,old=text?oldAdded.style:oldAdded;
+  const west=side.includes('w'),north=side.includes('n'),east=side.includes('e'),south=side.includes('s'),boxEdit=text&&side.length===1;
+  let w=frame.w,h=frame.h;
+  if(boxEdit){if(west||east)w=clamp(frame.w+(west?-dx:dx),old.scaleX,12000*old.scaleX);if(north||south)h=clamp(frame.h+(north?-dy:dy),old.scaleY,12000*old.scaleY);}
+  else{const vx=west?-frame.w:east?frame.w:0,vy=north?-frame.h:south?frame.h:0,factor=clamp(1+(dx*vx+dy*vy)/(vx*vx+vy*vy),Math.max(.01/old.scaleX,.01/old.scaleY,1/frame.w,1/frame.h),Math.min(100/old.scaleX,100/old.scaleY,12000/frame.w,12000/frame.h));w*=factor;h*=factor;}
+  const x=west?frame.x+frame.w-w:east?frame.x:frame.x+(frame.w-w)/2,y=north?frame.y+frame.h-h:south?frame.y:frame.y+(frame.h-h)/2;
+  if(x!==clampPosition(x)||y!==clampPosition(y)){Object.assign(v,structuredClone(start));return {...frame};}
+  if(boxEdit){if(west||east)style.width=w/old.scaleX;if(north||south)style.height=h/old.scaleY;}else{style.scaleX=old.scaleX*w/frame.w;style.scaleY=old.scaleY*h/frame.h;}
+  added.x=oldAdded.x+x-frame.x;added.y=oldAdded.y+y-frame.y;
+  return assets.layout?.(v).find(l=>l.id===id)?.frameRect||{x,y,w,h};
+ }
  const reject=()=>{Object.assign(v,structuredClone(start));return {...frame};};
  const text=TEXT_IDS.includes(id),image=id==='image',old=text?start.textLayers[id]:null;
  let sx=text?(old.scaleX??1):id==='logo'?(start.logoScaleX??1):1,sy=text?(old.scaleY??1):id==='logo'?(start.logoScaleY??1):1;
@@ -36,6 +51,6 @@ export function resizeLayer(v,id,start,frame,side,dx,dy,assets={}){
 export function preserveTextPositions(v,start,id,layout){
  if(!layout)return true;
  const before=layout(start),after=layout(v);
- for(const layer of after){if(layer.id===id)continue;const old=before.find(l=>l.id===layer.id);if(!old)continue;const target=v.textLayers[layer.id],dy=target.dy+old.origin.y-layer.origin.y;if(dy!==clampPosition(dy))return false;target.dy=dy;}
+ for(const layer of after){if(layer.id===id)continue;const old=before.find(l=>l.id===layer.id);if(!old)continue;const target=v.textLayers[layer.id];if(!target)continue;const dy=target.dy+old.origin.y-layer.origin.y;if(dy!==clampPosition(dy))return false;target.dy=dy;}
  return true;
 }

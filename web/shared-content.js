@@ -42,7 +42,7 @@ export function inheritGroupContent(p,v){
  v.content=structuredClone(peer?.content||p.sharedBaseline||{});
 }
 export function pruneMedia(p){
- const used=new Set();for(const content of [...p.variants.map(v=>v.content),p.sharedBaseline])for(const [key,value]of Object.entries(content||{})){if(mediaKeys.includes(key)&&value)used.add(value);if(key==='backgrounds')for(const bg of value)used.add(bg.data);}
+ const used=new Set(p.variants.flatMap(v=>(v.elements||[]).filter(e=>e.type==='image').map(e=>e.media)));for(const content of [...p.variants.map(v=>v.content),p.sharedBaseline])for(const [key,value]of Object.entries(content||{})){if(mediaKeys.includes(key)&&value)used.add(value);if(key==='backgrounds')for(const bg of value)used.add(bg.data);}
  for(const id of Object.keys(p.media||{}))if(!used.has(id))delete p.media[id];
 }
 

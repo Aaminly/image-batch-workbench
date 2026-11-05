@@ -1,3 +1,4 @@
+import {elementFor,copyElements,syncElementChanges} from './elements.js';
 import {resizeLayer,preserveTextPositions,mediaRect} from './layer-geometry.js';
 import {resolvedTextStyle} from './text-layout.js';
 import {sameEditDomain,groupName} from './locks.js';
@@ -25,12 +26,14 @@ export function syncVariantChanges(project,before,after,edit={},assets={}){
  const limited=[];
  for(const target of project.variants){
   if(target.id===after.id||!sameEditDomain(project,after,target))continue;
+  if(elementFor(after,edit.layerId)&&!elementFor(target,edit.layerId))continue;
   const image=assets.image,targetImage=edit.targetAssets&&Object.hasOwn(edit.targetAssets,target.id)?edit.targetAssets[target.id].image:image;
   const imageResize=edit.imageResize||['scale','imageScaleX','imageScaleY'].some(key=>before[key]!==after[key])||edit.layerId==='image'&&!!edit.resize;
   const imageMove=edit.layerId==='image'||before.dx!==after.dx||before.dy!==after.dy;
   const syncImage=image&&targetImage&&(imageMove||imageResize);
   if(syncImage&&syncImageTransform(target,after,image,targetImage,imageResize))limited.push(target.id);
   if(!syncImage&&edit.resize&&edit.frames?.[target.id]&&edit.startFrame&&edit.frame){const frame=edit.frames[target.id],ratioX=edit.frame.w/edit.startFrame.w,ratioY=edit.frame.h/edit.startFrame.h;resizeLayer(target,edit.layerId,structuredClone(target),frame,edit.resize,(ratioX-1)*frame.w*(edit.resize.includes('w')?-1:1),(ratioY-1)*frame.h*(edit.resize.includes('n')?-1:1),edit.targetAssets?.[target.id]||assets);continue;}
+  syncElementChanges(before,after,target);
   const targetBefore=structuredClone(target);
   const delta=(key,ratio,min,max)=>{if(before[key]!==after[key])target[key]=clamp(target[key]+(after[key]-before[key])*ratio,min,max);};
   const multiply=(key,min,max)=>{if(before[key]!==after[key])target[key]=clamp(target[key]*after[key]/before[key],min,max);};
@@ -72,6 +75,7 @@ export function syncGroupFromVariant(project,sourceId){
  const targets=groupSyncTargets(project,source);
  if(!targets.length)return [];
  for(const target of targets){
+  copyElements(source,target);
   const x=target.width/source.width,y=target.height/source.height,s=Math.min(target.width,target.height)/Math.min(source.width,source.height);
   for(const key of ['scale','imageScaleX','imageScaleY','logoScaleX','logoScaleY','crop','feather','textColor','accent','background','color','color2'])target[key]=source[key];
   for(const [key,ratio,min,max]of [['dx',x,-12000,12000],['dy',y,-12000,12000],['logoX',x,-6000,12000],['logoY',y,-6000,12000],['logoWidth',s,1,6000],['fontSize',s,4,1000]])target[key]=clamp(source[key]*ratio,min,max);
