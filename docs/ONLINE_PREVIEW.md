@@ -6,7 +6,7 @@
 
 建议采用 **GitHub Pages 上的独立静态交互预览模式**。托管可使用免费额度，但需要适配真实存储和导出边界，不能直接把当前 `web/` 上传后视为完整在线版。
 
-本地完整版继续保留抠图、压缩、ZIP 和批次自动保存。预览模式的能力差异应在实施前明确选定，不以假 API、模拟成功或静默回退代替真实功能。
+在线预览现已适配浏览器 PNG 与 ZIP 导出。本地完整版继续提供模型抠图、pngquant 量化压缩和批次自动保存；两种模式不使用假 API、模拟成功或静默回退。
 
 ## 托管选项
 
@@ -24,14 +24,16 @@
 - `web/app.js` 的启动流程依赖草稿恢复；API 不可用时会锁定编辑区域。
 - `web/drafts.js` 的批次与素材主存储在后端。`web/recovery.js` 的 IndexedDB 仅是未提交编辑检查点，不能当作现成的浏览器批次数据库。
 - 撤销 / 重做会调用草稿保存流程，静态版需要接通真实会话历史。
-- 单张 PNG 依赖 `/api/compress-png`；ZIP 依赖 `/api/archives`。
+- 本机版单张 PNG 依赖 `/api/compress-png`，ZIP 依赖 `/api/archives`；Pages 构建使用独立浏览器适配器替换它们。
 - 根路径静态资源与 API 路径需要适配 Pages 的仓库子路径。
 
 ## 静态预览范围
 
 保留真实的图片导入、预设及自定义尺寸、画布浏览、图层编辑、同组同步与锁定、版面检查、内存会话中的撤销 / 重做、JSON 项目导入 / 导出。
 
-明确停用本地模型抠图、服务器批次自动保存、pngquant 压缩与 ZIP。提示“刷新会重置，请下载项目 JSON 备份”，并提供本地完整版安装入口。浏览器原始 PNG 下载可作为另行选定的能力，但必须注明未经 pngquant 压缩，不能在压缩失败后自动冒充成功。
+PNG 使用浏览器原生编码，保留目标尺寸与透明度，不经过 pngquant 量化优化。ZIP 复用同一尺寸/背景计划和渲染循环，用自托管 zip.js 在浏览器打包已编码 PNG（STORE，不重复 deflate），支持 ZIP64、取消及当前页面重新下载。导出全程不上传图片，不调用后端、CDN 或 worker。ZIP64 不能消除浏览器内存和 Blob 容量限制。
+
+仍停用本地模型抠图、服务器批次与自动保存。提示“刷新会重置，请下载项目 JSON 备份”，并提供本地完整版安装入口。
 
 该方案复用现有渲染与编辑逻辑，不将用户图片发送到处理服务器。若需要跨刷新自动保存，应另行实现正式 IndexedDB 存储及容量失败处理，不把内存会话描述为持久保存。
 
@@ -46,13 +48,13 @@
 1. 在真实仓库子路径启动，网络记录中没有业务 `/api/` 请求或用户图片外发。
 2. 图片导入、尺寸、同步隔离、编辑、撤销以及 JSON 往返真实可用。
 3. 明确展示刷新语义与不可用功能，不出现虚假的自动保存成功状态。
-4. 若包含原始 PNG，验证目标像素、裁切范围与透明度，并标明压缩差异。
+4. 验证 PNG 目标像素、裁切范围与透明度；用独立 ZIP 解包器检查 CRC、数量、中文文件名和背景组合，并验证取消、再次导出和重新下载。
 5. 本地完整版保存、抠图及导出行为保持；运行受影响的回归。
 
 ## English summary
 
 A free static interactive preview is feasible, with **GitHub Pages** as the preferred host and Cloudflare Pages as an alternative. The current application is not directly static-hostable: startup, drafts, history transitions, PNG compression, and ZIP export depend on backend APIs, and root-relative assets need project-subpath support.
 
-The static preview retains real canvas editing, local imports, sizes, synchronization, in-memory undo/redo, and JSON import/export. It explicitly disables model-based cutouts, server autosave, pngquant, and ZIP, with a clear reset-on-refresh message. Raw browser PNG export is an optional scope decision and must not be presented as compressed output. The separate static preview implements this session-scoped editor mode and is published through GitHub Actions at [the Pages URL](https://aaminly.github.io/image-batch-workbench/).
+The static preview retains real canvas editing, local imports, sizes, synchronization, in-memory undo/redo, and JSON import/export. It also encodes PNGs and packages ZIPs entirely in the browser, using self-hosted zip.js with workers disabled and STORE entries. PNGs retain dimensions and alpha without pngquant optimization. ZIP64, cancellation, multi-size/background combinations, and in-page redownload are supported; memory and Blob limits still apply. Cutouts, server batches, and autosave remain disabled, with a clear reset-on-refresh message. The separate static preview implements this session-scoped editor mode and is published through GitHub Actions at [the Pages URL](https://aaminly.github.io/image-batch-workbench/).
 
 Render's free 512 MB / 0.1 CPU instance is not recommended for the current model-backed service; idle restarts also discard local files. New ordinary Docker/Gradio compute Spaces on Hugging Face currently require a paid plan despite zero hourly pricing for CPU Basic. Full public hosting additionally requires visitor isolation, ownership checks, quotas, cloud privacy disclosures, and measured runtime validation. See the official sources above; future free-tier availability is not guaranteed.

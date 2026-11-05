@@ -29,6 +29,7 @@ jobs:
           ln -s site work/pages/image-batch-workbench
           python3 -m http.server 18771 --bind 127.0.0.1 --directory work/pages > /tmp/pages-http.log 2>&1 &
           PAGES_URL=http://127.0.0.1:18771/image-batch-workbench/ node tests/pages-browser.mjs
+          PAGES_URL=http://127.0.0.1:18771/image-batch-workbench/ node tests/pages-export-browser.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:

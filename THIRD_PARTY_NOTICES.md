@@ -14,9 +14,10 @@ The project's own code and documentation are offered under the [MIT License](LIC
 | [FastAPI](https://github.com/fastapi/fastapi) | Local API service; [MIT](https://github.com/fastapi/fastapi/blob/master/LICENSE). |
 | [Pillow](https://github.com/python-pillow/Pillow) | Image processing; [MIT-CMU](https://github.com/python-pillow/Pillow/blob/main/LICENSE). |
 | [pngquant](https://pngquant.org/) | Separately installed command-line compressor invoked as a subprocess. Available under GPL or a commercial license, as explained by its upstream project. It is not MIT-licensed by this repository. |
+| [zip.js](https://github.com/gildas-lormeau/zip.js) | Browser-local ZIP creation; [BSD-3-Clause](https://github.com/gildas-lormeau/zip.js/blob/master/LICENSE). Pages includes its self-hosted ESM bundle and license in `vendor/zip.js` and `vendor/zip.LICENSE`. |
 | [Playwright](https://github.com/microsoft/playwright) | Browser testing; [Apache-2.0](https://github.com/microsoft/playwright/blob/main/LICENSE). |
 
-The source repository does not bundle dependency packages, model weights, browser binaries, or the pngquant executable. `setup.sh` installs pinned Python dependencies and asks rembg to download `birefnet-general`; the upstream download implementation for the pinned rembg version is the source of the weights. Version references are in `requirements.txt` and `package-lock.json`.
+The source repository does not bundle dependency packages, model weights, browser binaries, or the pngquant executable. The deployed Pages artifact includes the pinned zip.js browser bundle with its license; it does not load this library from a CDN. `setup.sh` installs pinned Python dependencies and asks rembg to download `birefnet-general`; the upstream download implementation for the pinned rembg version is the source of the weights. Version references are in `requirements.txt` and `package-lock.json`.
 
 上表为主要组件说明，不是完整的传递依赖清单或法律审计。若分发带依赖、模型或二进制的安装包，应根据实际捆绑版本检查并保留相应许可和声明；单独安装或子进程调用不应被解释为对所有分发方式的合规保证。
 

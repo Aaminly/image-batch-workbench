@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/state.test.mjs tests/editor-state.test.mjs tests/history.test.mjs tests/pages-session.test.mjs",
+    "test": "node --test tests/state.test.mjs tests/editor-state.test.mjs tests/history.test.mjs tests/pages-session.test.mjs tests/pages-export.test.mjs",
     "test:e2e": "node tests/e2e.mjs",
     "test:feather": "node tests/feather.mjs",
     "test:backgrounds": "node tests/backgrounds.mjs && node tests/background-capacity.mjs",
@@ -13,5 +13,8 @@
   },
   "devDependencies": {
     "playwright": "1.58.2"
+  },
+  "dependencies": {
+    "@zip.js/zip.js": "2.24.0"
   }
 }

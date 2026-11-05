@@ -1,8 +1,7 @@
 export function setupDraftUI({drafts,isBusy,setBusy,install,notice,draftStatus,endEdit,viewError}){
  const $=id=>document.getElementById(id);let travelling=false;const queue=[];
  const label=document.createElement('span');label.textContent='在线预览 · 刷新重置';$('batch-select').parentElement.append(label);
- $('open-export').textContent='下载项目 JSON';$('open-export').onclick=()=>{if(!isBusy())$('save-project').click();};
- const note=document.querySelector('.privacy-note');note.textContent='图片仅在浏览器处理。刷新会清空，请下载 JSON 保留修改。抠图、PNG/ZIP 导出与自动保存需使用本机完整版。';
+ const note=document.querySelector('.privacy-note');note.textContent='图片仅在浏览器处理。刷新会清空，请下载 JSON 保留修改。PNG/ZIP 在浏览器本地生成，未经 pngquant 量化优化；抠图与自动保存需使用本机完整版。';
  const link=document.createElement('a');link.href='https://github.com/Aaminly/image-batch-workbench#快速开始';link.target='_blank';link.rel='noopener noreferrer';link.textContent='安装本机完整版 ↗';note.append(document.createElement('br'),link);
  async function requestTravel(delta,repeat=false){
   if(isBusy()&&!travelling||repeat&&queue.at(-1)===delta)return;queue.push(delta);if(travelling)return;travelling=true;

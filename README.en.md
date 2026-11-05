@@ -36,7 +36,7 @@ No cloud image API or account is required. Background removal uses local segment
 | **Group-scoped synchronization** | Apply subsequent edits to eligible sizes in the same shape group, isolate individual sizes, or explicitly overwrite a group from the current layout. |
 | **Local background removal** | Keep original and cutout versions of both subject and logo images; run BiRefNet-General on your CPU. |
 | **Multiple backgrounds** | Match backgrounds by dimensions or aspect ratio, combine all backgrounds with selected sizes, or use only the current background. |
-| **PNG and ZIP export** | Export the current PNG or selected sizes as a batch; compress with local pngquant while preserving dimensions and alpha transparency. |
+| **PNG and ZIP export** | Export the current PNG or selected sizes as a batch; use pngquant in the local full version or browser PNG encoding online, preserving dimensions and alpha transparency. |
 | **Batches and recovery** | Autosave local batches, keep up to 10 undo/redo steps, and download self-contained JSON projects as separate backups. |
 
 ### Images, text, and backgrounds
@@ -104,9 +104,9 @@ If `uv`, `pngquant`, or model weights are missing, install the prerequisites or 
 
 Matching prefers backgrounds with exactly the same width and height, then falls back to matching aspect ratios. Multiple backgrounds matching a size all participate. Unmatched sizes are listed and block batch export rather than being silently skipped.
 
-PNG files go directly into the ZIP root, usually named `WIDTHxHEIGHT.png`. Multiple outputs for the same size receive a background number and name to avoid collisions. The transparency checkerboard is preview-only. Batch export can be cancelled, and completed archives can be downloaded again during their temporary retention period.
+PNG files go directly into the ZIP root, usually named `WIDTHxHEIGHT.png`. Multiple outputs for the same size receive a background number and name to avoid collisions. The transparency checkerboard is preview-only. Batch export can be cancelled, and completed archives can be downloaded again during their local retention period, or within the current page session online.
 
-Compression uses pngquant's lossy color quantization with quality parameters of 65–90. Pixel dimensions remain unchanged. Compression failures are reported explicitly; if compression offers no size reduction, the original PNG is retained. This is not the TinyPNG service.
+The local full version uses pngquant's lossy color quantization with quality parameters of 65–90. Pixel dimensions remain unchanged. Compression failures are reported explicitly; if compression offers no size reduction, the original PNG is retained. This is not the TinyPNG service.
 
 ### Common shortcuts
 
@@ -153,7 +153,7 @@ Autosave is not a separate backup. Forced shutdowns, power loss, disk failures, 
 
 **[Open the interactive preview](https://aaminly.github.io/image-batch-workbench/)** (GitHub Pages, built and deployed by Actions).
 
-The preview supports local image imports, canvas editing, multi-size synchronization, undo/redo, and project JSON import/export. Its session resets on refresh. Cutouts, PNG/ZIP export, server batches, and autosave require the local full version. See [preview details](docs/ONLINE_PREVIEW.md#english-summary) for capability boundaries and hosting considerations.
+The preview supports local image imports, canvas editing, synchronization, undo/redo, JSON backups, and browser-local PNG/ZIP downloads without uploading images. Online PNGs do not undergo pngquant optimization; ZIP export supports multiple sizes/backgrounds, cancellation, and redownload within the current page. Capacity is subject to browser memory. The session resets on refresh. Cutouts, server batches, and autosave require the local full version. See [preview details](docs/ONLINE_PREVIEW.md#english-summary) for capability boundaries and hosting considerations.
 
 ## Development and testing
 
@@ -176,7 +176,7 @@ npm ci
 npm test
 ```
 
-`npm test` runs the `state`, `editor-state`, `history`, and `pages-session` test files; it is not the full regression suite. Select targeted tests for the behavior being changed, for example:
+`npm test` runs the `state`, `editor-state`, `history`, `pages-session`, and `pages-export` test files; it is not the full regression suite. Select targeted tests for the behavior being changed, for example:
 
 ```sh
 node --test tests/element-media.test.mjs tests/group-sync.test.mjs
