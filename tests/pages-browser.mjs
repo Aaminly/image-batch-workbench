@@ -1,0 +1,31 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import {selectLayer} from './support/select-layer.mjs';
+const base=process.env.PAGES_URL||'http://127.0.0.1:18771/image-batch-workbench/';
+const b=await chromium.launch({...(process.env.CI?{}:{channel:'chrome'}),headless:true});
+try{
+ const p=await b.newPage({viewport:{width:1440,height:900},acceptDownloads:true});const errors=[],api=[],failed=[];p.setDefaultTimeout(10000);
+ p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(!r.url().startsWith('blob:')&&!r.url().startsWith('data:')&&new URL(r.url()).origin!==new URL(base).origin)failed.push('external '+r.url());if(new URL(r.url()).pathname.includes('/api/'))api.push(r.url());if(r.method()!=='GET')failed.push('unexpected upload '+r.url());});p.on('requestfailed',r=>failed.push(r.url()));p.on('dialog',d=>d.accept());
+ await p.goto(base);await p.waitForFunction(()=>document.getElementById('stage').dataset.canvasState==='ready');
+ assert(await p.locator('.batch-switch').textContent().then(t=>t.includes('刷新重置')));
+ await p.locator('#image-input').setInputFiles('tests/fixtures/layout.png');await p.waitForFunction(()=>document.getElementById('image-name').textContent==='layout.png');
+ await p.locator('#custom-w').evaluate(e=>{for(let x=e.parentElement;x;x=x.parentElement)if(x.tagName==='DETAILS')x.open=true;});await p.locator('#custom-w').fill('600');await p.locator('#custom-h').fill('500');await p.locator('#add-size').click();
+ await selectLayer(p,'title');await p.locator('#title').fill('Pages 真实编辑');await p.locator('#subtitle').focus();
+ const download=async()=>{const menu=p.locator('.project-menu');if(await menu.getAttribute('open')===null)await menu.locator('summary').click();const wait=p.waitForEvent('download');await p.locator('#save-project').click();const d=await wait;assert.match(await p.locator('#save-indicator').textContent(),/JSON 已生成/);const file=await d.path();const project=JSON.parse(await fs.readFile(file,'utf8'));await menu.locator('summary').click();return project;};
+ let project=await download();assert.equal(project.copy.title,'Pages 真实编辑');assert.equal(project.variants.length,2);assert(project.assets.original);
+ const copies=await p.evaluate(async({project,url})=>{const {contentFor}=await import(url);return project.variants.map(v=>contentFor(project,v).copy.title);},{project,url:new URL('shared-content.js',base).href});assert.deepEqual(copies,['Pages 真实编辑','Pages 真实编辑'],'same-group copy is really synchronized');
+ assert.equal(await p.evaluate(()=>!dispatchEvent(new Event('beforeunload',{cancelable:true}))),false,'JSON backup clears navigation protection');
+ await p.locator('#undo').click();await p.waitForFunction(()=>document.getElementById('title').value!=='Pages 真实编辑');await p.locator('#redo').click();await p.waitForFunction(()=>document.getElementById('title').value==='Pages 真实编辑');
+ await p.locator('#add-element').click();await p.waitForFunction(()=>document.querySelectorAll('[data-layer^="element-"]').length>0);
+ project=await download();assert(project.variants.some(v=>v.elements?.length));
+ await p.locator('.project-menu summary').click();await p.locator('#project-input').setInputFiles({name:'preview.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(project))});await p.locator('.project-menu summary').click();await p.waitForFunction(()=>document.getElementById('stage').dataset.canvasState==='ready');assert.equal((await download()).variants.length,2);
+ for(const id of ['export-png','export-all','cutout','draft-new','cache-reload','batch-select'])assert.equal(await p.locator('#'+id).isVisible(),false,id);
+ const active=await p.locator('#variant-select').inputValue(),other=project.variants.find(v=>v.id!==active).id;await p.locator(`#variant-list [data-lock-size="${other}"]`).click();await selectLayer(p,'title');await p.locator('#title').fill('单尺寸隔离');assert(await p.evaluate(()=>!dispatchEvent(new Event('beforeunload',{cancelable:true}))));const isolated=await download();const titles=await p.evaluate(async({project,url})=>{const {contentFor}=await import(url);return Object.fromEntries(project.variants.map(v=>[v.id,contentFor(project,v).copy.title]));},{project:isolated,url:new URL('shared-content.js',base).href});assert.equal(titles[active],'单尺寸隔离');assert.equal(titles[other],'Pages 真实编辑');
+ await p.locator('#open-export').click();await p.waitForTimeout(150);if(await p.locator('#close-text-style').isVisible())await p.locator('#close-text-style').click();
+ await p.screenshot({path:'work/pages/desktop.png'});
+ const mobile=await b.newPage({viewport:{width:390,height:844}});await mobile.goto(base);await mobile.waitForFunction(()=>document.getElementById('stage').dataset.canvasState==='ready');assert(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert((await mobile.locator('.batch-switch>span').boundingBox()).x>=16);await mobile.screenshot({path:'work/pages/mobile.png'});await mobile.close();
+ await p.reload();await p.waitForFunction(()=>document.getElementById('stage').dataset.canvasState==='ready');assert.equal(await p.locator('#size-count').textContent(),'1 个');assert.notEqual(await p.locator('#title').inputValue(),'Pages 真实编辑');
+ assert.deepEqual(api,[]);assert.deepEqual(errors,[]);assert.deepEqual(failed,[]);
+ console.log('PASS: project subpath, image import, custom sizes, editing, undo/redo, added elements, JSON roundtrip, reset on refresh, disabled backend controls, no API/upload/page errors, mobile layout.');
+}finally{await b.close();}

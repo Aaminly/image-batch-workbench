@@ -1,0 +1,48 @@
+name: Deploy interactive preview to GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    permissions:
+      contents: read
+      pages: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:pages
+      - run: npx playwright install --with-deps chromium
+      - name: Check the actual project subpath
+        run: |
+          ln -s site work/pages/image-batch-workbench
+          python3 -m http.server 18771 --bind 127.0.0.1 --directory work/pages > /tmp/pages-http.log 2>&1 &
+          PAGES_URL=http://127.0.0.1:18771/image-batch-workbench/ node tests/pages-browser.mjs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: work/pages/site
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

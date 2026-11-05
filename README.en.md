@@ -151,7 +151,9 @@ Autosave is not a separate backup. Forced shutdowns, power loss, disk failures, 
 
 ## Online preview
 
-A free static interactive preview is feasible, but the current version depends on its local backend and has not been deployed online. See the [preview assessment](docs/ONLINE_PREVIEW.md#english-summary) for hosting options, required adaptations, and capability boundaries.
+**[Open the interactive preview](https://aaminly.github.io/image-batch-workbench/)** (GitHub Pages, built and deployed by Actions).
+
+The preview supports local image imports, canvas editing, multi-size synchronization, undo/redo, and project JSON import/export. Its session resets on refresh. Cutouts, PNG/ZIP export, server batches, and autosave require the local full version. See [preview details](docs/ONLINE_PREVIEW.md#english-summary) for capability boundaries and hosting considerations.
 
 ## Development and testing
 
@@ -174,7 +176,7 @@ npm ci
 npm test
 ```
 
-`npm test` only runs the `state`, `editor-state`, and `history` test files; it is not the full regression suite. Select targeted tests for the behavior being changed, for example:
+`npm test` runs the `state`, `editor-state`, `history`, and `pages-session` test files; it is not the full regression suite. Select targeted tests for the behavior being changed, for example:
 
 ```sh
 node --test tests/element-media.test.mjs tests/group-sync.test.mjs

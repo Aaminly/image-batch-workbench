@@ -1,6 +1,6 @@
 # 免费在线预览可行性 / Free online preview feasibility
 
-评估日期 / Assessed: 2026-11-05。本文是方案评估，在线预览尚未实现或部署。平台规则和额度可能变化。
+评估日期 / Assessed: 2026-11-05。本文记录托管评估与静态预览范围。[在线入口](https://aaminly.github.io/image-batch-workbench/) 由 GitHub Actions 构建发布，实际可用性以最新部署结果为准。平台规则和额度可能变化。
 
 ## 结论
 
@@ -27,7 +27,7 @@
 - 单张 PNG 依赖 `/api/compress-png`；ZIP 依赖 `/api/archives`。
 - 根路径静态资源与 API 路径需要适配 Pages 的仓库子路径。
 
-## 建议的预览范围（待实施）
+## 静态预览范围
 
 保留真实的图片导入、预设及自定义尺寸、画布浏览、图层编辑、同组同步与锁定、版面检查、内存会话中的撤销 / 重做、JSON 项目导入 / 导出。
 
@@ -53,6 +53,6 @@
 
 A free static interactive preview is feasible, with **GitHub Pages** as the preferred host and Cloudflare Pages as an alternative. The current application is not directly static-hostable: startup, drafts, history transitions, PNG compression, and ZIP export depend on backend APIs, and root-relative assets need project-subpath support.
 
-The proposed preview would retain real canvas editing, local imports, sizes, synchronization, in-memory undo/redo, and JSON import/export. It would explicitly disable model-based cutouts, server autosave, pngquant, and ZIP, with a clear reset-on-refresh message. Raw browser PNG export is an optional scope decision and must not be presented as compressed output. None of this preview mode has been implemented or deployed.
+The static preview retains real canvas editing, local imports, sizes, synchronization, in-memory undo/redo, and JSON import/export. It explicitly disables model-based cutouts, server autosave, pngquant, and ZIP, with a clear reset-on-refresh message. Raw browser PNG export is an optional scope decision and must not be presented as compressed output. The separate static preview implements this session-scoped editor mode and is published through GitHub Actions at [the Pages URL](https://aaminly.github.io/image-batch-workbench/).
 
 Render's free 512 MB / 0.1 CPU instance is not recommended for the current model-backed service; idle restarts also discard local files. New ordinary Docker/Gradio compute Spaces on Hugging Face currently require a paid plan despite zero hourly pricing for CPU Basic. Full public hosting additionally requires visitor isolation, ownership checks, quotas, cloud privacy disclosures, and measured runtime validation. See the official sources above; future free-tier availability is not guaranteed.

@@ -3,12 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/state.test.mjs tests/editor-state.test.mjs tests/history.test.mjs",
+    "test": "node --test tests/state.test.mjs tests/editor-state.test.mjs tests/history.test.mjs tests/pages-session.test.mjs",
     "test:e2e": "node tests/e2e.mjs",
     "test:feather": "node tests/feather.mjs",
     "test:backgrounds": "node tests/backgrounds.mjs && node tests/background-capacity.mjs",
     "test:clarity": "node --test tests/clarity.mjs",
-    "test:editor": "node tests/editor-canvas.mjs && node tests/editor-render.mjs && node tests/editor-backgrounds.mjs"
+    "test:editor": "node tests/editor-canvas.mjs && node tests/editor-render.mjs && node tests/editor-backgrounds.mjs",
+    "build:pages": "node scripts/build-pages.mjs"
   },
   "devDependencies": {
     "playwright": "1.58.2"

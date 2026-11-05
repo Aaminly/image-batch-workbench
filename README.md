@@ -151,7 +151,9 @@ ZIP 中的 PNG 直接放在根目录，通常按 `宽x高.png` 命名；同尺�
 
 ## 在线预览
 
-免费静态交互预览可行，但当前版本依赖本机后端，尚未部署在线版本。托管选项、必要适配及功能边界见 [在线预览评估](docs/ONLINE_PREVIEW.md)。
+**[打开在线交互预览](https://aaminly.github.io/image-batch-workbench/)**（GitHub Pages，由 Actions 构建发布）。
+
+预览支持图片导入、画布编辑、多尺寸同步、撤销 / 重做和项目 JSON 导入 / 导出。内容仅保留在当前页面，刷新会重置；抠图、PNG/ZIP 导出、服务器批次和自动保存请使用本机完整版。实现边界与托管评估见 [在线预览说明](docs/ONLINE_PREVIEW.md)。
 
 ## 开发与测试
 
@@ -174,7 +176,7 @@ npm ci
 npm test
 ```
 
-`npm test` 仅覆盖 `state`、`editor-state` 与 `history` 三个测试文件，不代表全套回归。可按改动范围选择专项测试，例如：
+`npm test` 覆盖 `state`、`editor-state`、`history` 与 `pages-session` 四个测试文件，不代表全套回归。可按改动范围选择专项测试，例如：
 
 ```sh
 node --test tests/element-media.test.mjs tests/group-sync.test.mjs
