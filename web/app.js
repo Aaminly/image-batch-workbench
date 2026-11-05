@@ -1,4 +1,4 @@
-import {elementFor,elementType,isTextLayer,addElement,editElement,internElementMedia} from './elements.js';
+import {elementFor,elementType,isTextLayer,addElement,editElement,removeElement,internElementMedia} from './elements.js';
 import {MEDIA_KEYS,contentFor,editShared,pruneMedia,SHARED_KEYS} from './shared-content.js';
 import {sameEditDomain,groupName,editDomainName,setSizeLock,setGroupLock} from './locks.js';
 import {createNotifications} from './notifications.js';
@@ -211,6 +211,11 @@ function addObject(type){
  if(type==='image'){replacingElement=null;$('element-image-input').click();return;}
  try{editor?.cancel();drafts.end();const id=addElement(project,currentId,type,{},$('sync-sizes').checked);refreshEditSnapshot();changed();editor.select(id);draw();}catch(error){notice(error.message,true);}
 }
+$('delete-element').onclick=()=>{
+ const id=editor?.getSelection(),selected=elementFor(current(),id);if(busy||!selected)return;
+ try{editor.cancel();drafts.end();const targets=removeElement(project,currentId,id,$('sync-sizes').checked);refreshEditSnapshot();changed();editor.select(null);document.querySelector(`[data-element-type="${selected.type}"]`).focus({preventScroll:true});notice(`已删除 ${targets.length} 个尺寸中的${{text:'文字',image:'图片',button:'按钮'}[selected.type]}，可撤销。`);}
+ catch(error){notice(error.message,true);}
+};
 $('element-copy').oninput=()=>{if(busy)return;try{editElement(project,currentId,editor.getSelection(),{text:$('element-copy').value},$('sync-sizes').checked);changed();draw();}catch(error){notice(error.message,true);}};
 $('replace-element-image').onclick=()=>{if(busy)return;replacingElement=editor.getSelection();$('element-image-input').click();};
 $('element-image-input').onchange=async e=>{

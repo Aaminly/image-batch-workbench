@@ -83,3 +83,28 @@ test('image aspect and existing axis deformation survive add, size inheritance a
  const c=addVariant(p,1080,1080);assert.equal(c.elements[0].width/c.elements[0].height,2);assert.equal(c.elements[0].scaleX/c.elements[0].scaleY,4);
  syncGroupFromVariant(p,a.id);assert.equal(b.elements[0].width/b.elements[0].height,2);assert.equal(b.elements[0].scaleX/b.elements[0].scaleY,4);
 });
+test('delete added text, image and button by ID while respecting sync scope and size locks',()=>{
+ for(const type of ['text','image','button']){
+  const p=fixture(),[a,b,c,d]=p.variants,id=elements.addElement(p,a.id,type,type==='image'?{data,width:100,height:50}:{},true);
+  const keep=elements.addElement(p,a.id,'text',{},true);d.locked=true;
+  assert.equal(typeof elements.removeElement,'function');
+  assert.deepEqual(elements.removeElement(p,a.id,id,true),[a.id,b.id]);
+  assert.equal(elements.elementFor(a,id),undefined);assert.equal(elements.elementFor(b,id),undefined);assert.ok(elements.elementFor(d,id));assert.ok(elements.elementFor(a,keep));assert.equal(c.elements.length,0);validateProject(p);
+ }
+});
+test('delete only current when sync is off or source locked, and preserve media until last reference',()=>{
+ const p=fixture(),[a,b,,d]=p.variants,id=elements.addElement(p,a.id,'image',{data,width:100,height:50},true),media=a.elements[0].media;
+ const other=elements.addElement(p,a.id,'image',{data,width:100,height:50},false);
+ elements.removeElement(p,a.id,id,false);assert.ok(elements.elementFor(b,id));assert.ok(p.media[media]);
+ b.locked=true;elements.removeElement(p,b.id,id,true);assert.ok(elements.elementFor(d,id));assert.ok(p.media[media]);
+ elements.removeElement(p,d.id,id,false);assert.ok(p.media[media]);elements.removeElement(p,a.id,other,false);assert.equal(p.media[media],undefined);validateProject(p);
+});
+test('delete respects legacy custom group domain and rejects builtin or missing selections atomically',()=>{
+ const p=fixture(),a=p.variants[0],id=elements.addElement(p,a.id,'text',{},true);p.lockedGroups=['自定义'];
+ elements.removeElement(p,a.id,id,true);assert.ok(elements.elementFor(p.variants[1],id));assert.equal(elements.elementFor(p.variants[3],id),undefined);
+ const before=structuredClone(p);for(const key of ['title','image','cta','unknown'])assert.throws(()=>elements.removeElement(p,a.id,key,true));assert.deepEqual(p,before);
+});
+test('delete keeps media owned by old isolated content and shared baseline',()=>{
+ const p=fixture(),a=p.variants[0],id=elements.addElement(p,a.id,'image',{data,width:100,height:50},false),media=a.elements[0].media;
+ p.variants[1].content={logo:media};p.sharedBaseline={original:media};elements.removeElement(p,a.id,id,false);assert.equal(p.media[media],data);validateProject(p);
+});

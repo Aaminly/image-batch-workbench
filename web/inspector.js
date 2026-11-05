@@ -31,6 +31,9 @@ export function createInspector({getState,selectLayer,addElement}){
   const ids=new Set((current.elements||[]).map(e=>e.id));
   for(const row of $('element-objects').querySelectorAll('[data-layer^="element-"]'))if(!ids.has(row.dataset.layer))row.remove();
   for(const e of current.elements||[])if(!$('element-objects').querySelector(`[data-layer="${e.id}"]`)){const row=document.createElement('button');row.type='button';row.dataset.layer=e.id;const img=document.createElement('img');img.alt='';img.hidden=true;const copy=document.createElement('span');copy.className='object-copy';row.append(img,copy);$('element-objects').append(row);}
+  const rows=[...$('element-objects').querySelectorAll('[data-layer^="element-"]')],byId=new Map(rows.map(row=>[row.dataset.layer,row]));
+  if((current.elements||[]).some((e,i)=>rows[i]?.dataset.layer!==e.id))$('element-objects').append(...current.elements.map(e=>byId.get(e.id)));
+  $('delete-element').hidden=!added;$('delete-element').disabled=busy;$('delete-element').textContent='删除'+({text:'文字',image:'图片',button:'按钮'}[added?.type]||'元素');
   $('element-copy-field').hidden=!added||!text;$('element-copy').disabled=busy;
   if(added&&text&&$('element-copy').value!==added.text)$('element-copy').value=added.text;
   $('added-image-properties').hidden=added?.type!=='image';
@@ -54,7 +57,7 @@ export function createInspector({getState,selectLayer,addElement}){
   $('scale-percent').disabled=busy;$('reset-background-framing').disabled=busy||!background;$('background-framing').hidden=!background;
   $('background-colors').hidden=current.background==='transparent';$('color2').closest('label').hidden=current.background!=='gradient';document.querySelectorAll('[data-fill]').forEach(button=>{button.disabled=busy;button.setAttribute('aria-pressed',String(button.dataset.fill===current.background));});
   const domainTargets=project.variants.filter(v=>v.id===current.id||(sync&&sameEditDomain(project,current,v))),targets=added?domainTargets.filter(v=>elementFor(v,selected)):domainTargets,key=current.id+':'+targets.map(v=>v.id).join('|');
-  $('scope-summary').textContent=`影响 ${targets.length} 个 ›`;$('background-scope').textContent=$('fill-scope').textContent=`影响 ${domainTargets.length} 个尺寸`;$('add-element').title=`新增将影响 ${domainTargets.length} 个尺寸`;
+  $('scope-summary').textContent=`影响 ${targets.length} 个 ›`;$('background-scope').textContent=$('fill-scope').textContent=`影响 ${domainTargets.length} 个尺寸`;$('add-element').title=`新增将影响 ${domainTargets.length} 个尺寸`;$('delete-element').title=`删除将影响 ${targets.length} 个尺寸，可撤销`;
   if($('scope-list').dataset.key!==key){$('scope-list').dataset.key=key;$('scope-list').replaceChildren(...targets.map(v=>{const li=document.createElement('li');li.textContent=`${v.width} × ${v.height}${v.id===current.id?'（当前）':''}`;return li;}));}
   document.querySelectorAll('[data-color-value]').forEach(output=>output.textContent=$(output.dataset.colorValue).value.toUpperCase());
   document.querySelectorAll('#background-list button,#background-management-list button,#background-clear').forEach(button=>button.disabled=busy);$('batch-select').disabled=busy;

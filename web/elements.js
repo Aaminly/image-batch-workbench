@@ -1,3 +1,4 @@
+import {pruneMedia} from './shared-content.js';
 import {defaultTextLayer,validateProject} from './state.js';
 import {sameEditDomain} from './locks.js';
 export const elementFor=(v,id)=>v?.elements?.find(e=>e.id===id);
@@ -46,4 +47,11 @@ export function syncElementChanges(before,after,target){
    else own.style[key]=value;
   }
  }
+}
+
+export function removeElement(p,sourceId,id,sync=true){
+ const source=p.variants.find(v=>v.id===sourceId);if(!elementFor(source,id))throw Error('请选择新增的文字、图片或按钮');
+ const targets=p.variants.filter(v=>(v.id===sourceId||(sync&&sameEditDomain(p,source,v)))&&elementFor(v,id));
+ for(const target of targets)target.elements=target.elements.filter(e=>e.id!==id);
+ pruneMedia(p);return targets.map(v=>v.id);
 }
