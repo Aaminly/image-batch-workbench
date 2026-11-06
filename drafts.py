@@ -130,12 +130,15 @@ class DraftStore:
                 for e in v.get('elements',[]):
                     if not isinstance(e,dict):raise ValueError()
                     if e.get('type')!='image':continue
-                    for key in ('media','originalMedia','cutoutMedia'):
+                    for key in ('media','originalMedia','cutoutMedia','cutoutResult'):
                         if key=='media' or key in e:
                             if key=='cutoutMedia' and e[key] is None:continue
                             if not isinstance(e.get(key),str) or e[key] not in media:raise ValueError()
                     if e.get('cutoutMedia') and not e.get('originalMedia'):raise ValueError()
                     if e.get('originalMedia') and e['media'] not in (e['originalMedia'],e.get('cutoutMedia')):raise ValueError()
+                    if 'cutoutParent' in e or 'cutoutResult' in e:
+                        parent=next((item for item in v['elements'] if isinstance(item,dict) and item.get('id')==e.get('cutoutParent')),None)
+                        if not isinstance(e.get('cutoutParent'),str) or e['cutoutParent']==e.get('id') or (e['cutoutParent'] not in ('image','logo') and (not parent or parent.get('type')!='image' or 'cutoutParent' in parent)) or e.get('cutoutResult') not in media:raise ValueError()
             for content in [v.get('content',{}) for v in variants]+[p.get('sharedBaseline',{})]:
                 if not isinstance(content,dict):raise ValueError()
                 if content.get('source','original') not in ('original','cutout'):raise ValueError()

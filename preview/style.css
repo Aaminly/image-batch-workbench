@@ -2,3 +2,4 @@
 .batch-switch>span{color:var(--accent);font-size:13px;white-space:nowrap}
 .privacy-note a{display:inline-block;margin-top:10px}
 @media(max-width:800px){.topbar{grid-template-columns:1fr;padding:12px 16px}.brand{grid-row:1}.actions{grid-row:2;justify-content:space-between;margin-left:0}.batch-switch{grid-row:3}}
+#cutout-options{display:none!important}

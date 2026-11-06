@@ -1,5 +1,6 @@
 import {elementFor,elementType,isTextLayer} from './elements.js';
 import {sameEditDomain,groupName} from './locks.js';
+import {cutoutTextVisible} from './image-content.js';
 export function createInspector({getState,selectLayer,addElement,replaceImage}){
  const $=id=>document.getElementById(id);let activeTab='properties',lastSelection='',paletteOpen=false;
  const typeOf=id=>elementType(getState().current,id);
@@ -41,7 +42,8 @@ export function createInspector({getState,selectLayer,addElement,replaceImage}){
   $('replace-element-image').disabled=busy;
 
   document.querySelectorAll('[data-layer]').forEach(button=>{const id=button.dataset.layer,e=elementFor(current,id),kind=typeOf(id);button.hidden=kind!==type;const copy=button.querySelector('.object-copy'),same=(current.elements||[]).filter(item=>item.type===kind),number=e?same.findIndex(item=>item.id===id)+(kind==='text'?3:kind==='image'?3:2):id==='title'?1:id==='subtitle'||id==='logo'?2:1;
-   if(copy)copy.textContent=`${kind==='button'?'按钮':kind==='image'?'图片':'文字'} ${number} · ${(e?.text??content.copy[id]??'图片').replace(/\s+/g,' ').slice(0,50)}`;
+   if(e?.cutoutParent)button.hidden=kind!==type||!cutoutTextVisible(project,current,e);
+   if(copy)copy.textContent=e?.cutoutParent?'图片 · 原图文字':`${kind==='button'?'按钮':kind==='image'?'图片':'文字'} ${number} · ${(e?.text??content.copy[id]??'图片').replace(/\s+/g,' ').slice(0,50)}`;
    const image=button.querySelector('img');if(image){const data=e?.type==='image'?project.media[e.media]:id==='logo'?content.assets.logo:id==='image'?content.assets[content.source]:null;image.hidden=!data;if(data&&image.getAttribute('src')!==data)image.src=data;if(!data)image.removeAttribute('src');}
   });
   $('image-tools').hidden=type!=='image';$('main-image-tools').hidden=selected!=='image';$('logo-image-tools').hidden=selected!=='logo';$('replace-image').disabled=busy;

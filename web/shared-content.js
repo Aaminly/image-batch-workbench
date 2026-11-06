@@ -28,7 +28,7 @@ export function editShared(p,source,patch,sync=true){
   for(const target of targets){
    const receives=target.baseline?sync&&!source.locked&&!isGroupLocked(p,source):target.id===source.id||(sync&&sameEditDomain(p,source,target));
    target.content??={};
-   if(receives)delete target.content[key];
+   if(receives){delete target.content[key];if(!target.baseline&&((key==='cutout'&&value===null)||(key==='logoCutout'&&value===null)))target.elements=(target.elements||[]).filter(e=>e.cutoutParent!==(key==='cutout'?'image':'logo'));}
    else if(!Object.hasOwn(target.content,key))target.content[key]=store(p,key,rootValue(p,key));
    if(target.baseline)p.sharedBaseline=target.content;
   }
@@ -42,7 +42,7 @@ export function inheritGroupContent(p,v){
  v.content=structuredClone(peer?.content||p.sharedBaseline||{});
 }
 export function pruneMedia(p){
- const used=new Set(p.variants.flatMap(v=>(v.elements||[]).filter(e=>e.type==='image').flatMap(e=>[e.media,e.originalMedia,e.cutoutMedia].filter(Boolean))));for(const content of [...p.variants.map(v=>v.content),p.sharedBaseline])for(const [key,value]of Object.entries(content||{})){if(mediaKeys.includes(key)&&value)used.add(value);if(key==='backgrounds')for(const bg of value)used.add(bg.data);}
+ const used=new Set(p.variants.flatMap(v=>(v.elements||[]).filter(e=>e.type==='image').flatMap(e=>[e.media,e.originalMedia,e.cutoutMedia,e.cutoutResult].filter(Boolean))));for(const content of [...p.variants.map(v=>v.content),p.sharedBaseline])for(const [key,value]of Object.entries(content||{})){if(mediaKeys.includes(key)&&value)used.add(value);if(key==='backgrounds')for(const bg of value)used.add(bg.data);}
  for(const id of Object.keys(p.media||{}))if(!used.has(id))delete p.media[id];
 }
 

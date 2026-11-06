@@ -4,6 +4,7 @@ import {resizeLayer,TEXT_IDS} from './layer-geometry.js';
 function contains(r,x,y){return r&&x>=r.x&&y>=r.y&&x<=r.x+r.w&&y<=r.y+r.h;}
 function intersect(a,b){const x=Math.max(a.x,b.x),y=Math.max(a.y,b.y);return{x,y,w:Math.min(a.x+a.w,b.x+b.w)-x,h:Math.min(a.y+a.h,b.y+b.h)-y};}
 export function hitTest(regions,v,x,y){
+ if(regions.hitLayers){for(const layer of [...regions.hitLayers].reverse())if(layer.hitRects.some(r=>contains(r,x,y)))return layer.id;return null;}
  for(const layer of [...(regions.added||[])].reverse())if(layer.hitRects.some(r=>contains(r,x,y)))return layer.id;
  for(const id of ['cta','subtitle','title'])if(regions.layers?.[id]?.hitRects.some(rect=>contains(rect,x,y)))return id;
  if(contains(regions.logo,x,y))return'logo';

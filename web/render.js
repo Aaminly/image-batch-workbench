@@ -2,6 +2,7 @@ import {mediaRect} from './layer-geometry.js';
 import {drawFeathered} from './feather.js';
 import {layoutText,paintText,unionRects} from './text-layout.js';
 import {MEDIA_KEYS,contentFor} from './shared-content.js';
+import {cutoutTextVisible} from './image-content.js';
 const decodedMedia=new Map();
 export function variantAssets(project,variant,assets){
  const effective=contentFor(project,variant),result={...assets};
@@ -43,6 +44,21 @@ export function render(canvas,p,v,assets,{pixelWidth=v.width,pixelHeight=v.heigh
   ctx.save();ctx.beginPath();ctx.rect(0,0,w,h);ctx.clip();ctx.drawImage(image,(w-bw)*(v.bgX??.5),(h-bh)*(v.bgY??.5),bw,bh);ctx.restore();
   if(scale>1.01)warnings.push('背景图片分辨率低于输出尺寸，放大可能损失清晰度');
  }
+ regions.added=[];regions.hitLayers=[];
+ function paintImage(e){
+  const image=assets[e.id];if(!image||!cutoutTextVisible(p,v,e))return;
+  const r=mediaRect(v,e.id,image),main=e.cutoutParent==='image';
+  if(main&&v.crop){ctx.save();ctx.beginPath();ctx.rect(v.box.x,v.box.y,v.box.w,v.box.h);ctx.clip();}
+  const parent=main&&assets[p.source]?mediaRect(v,'image',assets[p.source]):r;
+  drawFeathered(ctx,image,r,main&&v.crop?v.box:null,main?v.feather??0:0,{x:viewport.x,y:viewport.y,width:viewport.w,height:viewport.h},parent);
+  if(main&&v.crop)ctx.restore();
+  const hit=main&&v.crop?{x:Math.max(r.x,v.box.x),y:Math.max(r.y,v.box.y),w:Math.max(0,Math.min(r.x+r.w,v.box.x+v.box.w)-Math.max(r.x,v.box.x)),h:Math.max(0,Math.min(r.y+r.h,v.box.y+v.box.h)-Math.max(r.y,v.box.y))}:r;
+  regions.added.push({id:e.id,frameRect:r,rect:r,hitRects:hit.w&&hit.h?[hit]:[]});
+  regions.hitLayers.push(regions.added.at(-1));
+  if(outside(r,w,h))warnings.push('新增图片超出画布');if(r.w>image.width*1.01||r.h>image.height*1.01)warnings.push('新增图片放大超过原始分辨率');
+ }
+ const associated=new Map();for(const e of v.elements||[])if(e.cutoutParent){if(!associated.has(e.cutoutParent))associated.set(e.cutoutParent,[]);associated.get(e.cutoutParent).push(e);}
+ const paintTextImages=id=>{for(const e of associated.get(id)||[])paintImage(e);};
  const img=assets[p.source];
  if(img){
   const r=mediaRect(v,'image',img);
@@ -52,12 +68,17 @@ export function render(canvas,p,v,assets,{pixelWidth=v.width,pixelHeight=v.heigh
   if(r.w>img.width*1.01||r.h>img.height*1.01)warnings.push('主体图片放大超过原始分辨率，无法增加原有细节');
   if(Math.min(r.w,r.h)<40)warnings.push('主体显示较小，请以实际像素检查细节');
  }
+ if(regions.image){const r=regions.image,hit=v.crop?{x:Math.max(r.x,v.box.x),y:Math.max(r.y,v.box.y),w:Math.max(0,Math.min(r.x+r.w,v.box.x+v.box.w)-Math.max(r.x,v.box.x)),h:Math.max(0,Math.min(r.y+r.h,v.box.y+v.box.h)-Math.max(r.y,v.box.y))}:r;regions.hitLayers.push({id:'image',hitRects:hit.w&&hit.h?[hit]:[]});}
+ paintTextImages('image');
  if(assets.logo){const logo=assets.logo,r=mediaRect(v,'logo',logo);ctx.drawImage(logo,r.x,r.y,r.w,r.h);regions.logo=r;if(outside(r,w,h))warnings.push('Logo超出画布');}
+ if(regions.logo)regions.hitLayers.push({id:'logo',hitRects:[regions.logo]});
+ paintTextImages('logo');
  ctx.textBaseline='top';const layers=layoutText(ctx,p,v);paintText(ctx,layers.filter(l=>!l.id.startsWith('element-')),v.accent);
- regions.added=[];
+ regions.hitLayers.push(...layers.filter(l=>!l.id.startsWith('element-')));
  for(const e of v.elements||[]){
-  if(e.type==='image'){const img=assets[e.id];if(!img)continue;const r=mediaRect(v,e.id,img);ctx.drawImage(img,r.x,r.y,r.w,r.h);regions.added.push({id:e.id,frameRect:r,rect:r,hitRects:[r]});if(outside(r,w,h))warnings.push('新增图片超出画布');if(r.w>img.width*1.01||r.h>img.height*1.01)warnings.push('新增图片放大超过原始分辨率');}
-  else {const layer=layers.find(l=>l.id===e.id);if(layer){paintText(ctx,[layer],e.accent);regions.added.push(layer);}}
+  if(e.cutoutParent)continue;
+  if(e.type==='image'){paintImage(e);paintTextImages(e.id);}
+  else {const layer=layers.find(l=>l.id===e.id);if(layer){paintText(ctx,[layer],e.accent);regions.added.push(layer);regions.hitLayers.push(layer);}}
  }
  regions.layers=Object.fromEntries([...layers,...regions.added].map(layer=>[layer.id,layer]));regions.text=unionRects(layers.map(layer=>layer.rect));
  for(const layer of layers){warnings.push(...layer.warnings);if(outside(layer.rect,w,h))warnings.push('文字或效果超出画布；请调整位置、字号或效果范围，文案未被删除');}

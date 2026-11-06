@@ -81,6 +81,7 @@ export function validateProject(input,checkContent=true){
    if(e.type==='image'){
     if(!Object.hasOwn(p.media||{},e.media)||!finite(e.width,1,12000)||!finite(e.height,1,12000)||!finite(e.scaleX,.01,100)||!finite(e.scaleY,.01,100))throw Error('新增图片无效');
     if((e.originalMedia!==undefined&&!Object.hasOwn(p.media||{},e.originalMedia))||(e.cutoutMedia!=null&&!Object.hasOwn(p.media||{},e.cutoutMedia))||(e.cutoutMedia&&!e.originalMedia)||(e.originalMedia&&e.media!==e.originalMedia&&e.media!==e.cutoutMedia))throw Error('图片原图或抠图引用无效');
+    if(e.cutoutParent!==undefined||e.cutoutResult!==undefined){const parent=v.elements.find(item=>item.id===e.cutoutParent);if(typeof e.cutoutParent!=='string'||(!['image','logo'].includes(e.cutoutParent)&&(!parent||parent.type!=='image'||parent.cutoutParent))||e.cutoutParent===e.id||!Object.hasOwn(p.media||{},e.cutoutResult))throw Error('文字图片关联无效');}
    }
    else {if(typeof e.text!=='string'||e.text.length>2000||!color(e.accent))throw Error('新增文案或按钮无效');validateTextLayer(e.style);if(e.style.dx!==0||e.style.dy!==0)throw Error('新增文字位置无效');}
   }

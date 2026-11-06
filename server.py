@@ -106,7 +106,7 @@ def model_ready():
     except OSError:
         return False
 
-def cutout(data):
+def cutout(data, mode='plain'):
     image = decode_image(data)
     if not model_ready():
         raise HTTPException(503, '本地模型缺失或损坏，请运行 setup.sh 下载校验')
@@ -128,6 +128,21 @@ def cutout(data):
         extrema = mask.getextrema()
         if extrema[0] == extrema[1]:
             raise HTTPException(422, '未识别出有效主体，请换图或明确选择使用原图')
+        if mode != 'plain':
+            from text_cutout import recognize_text, text_layer, compose_text_cutout
+            text = text_layer(image, recognize_text(image))
+            result, text = compose_text_cutout(image, mask, text, mode)
+            if mode == 'split':
+                bounds = text.getchannel('A').getbbox()
+                # Transparent padding preserves interpolation at cropped letter edges.
+                bounds = (max(0, bounds[0]-2), max(0, bounds[1]-2), min(image.width, bounds[2]+2), min(image.height, bounds[3]+2))
+                def encoded(value):
+                    output = io.BytesIO(); value.save(output, format='PNG')
+                    return 'data:image/png;base64,' + base64.b64encode(output.getvalue()).decode('ascii')
+                return {'subject': encoded(result), 'text': encoded(text.crop(bounds)),
+                        'bounds': list(bounds), 'width': image.width, 'height': image.height}
+            output = io.BytesIO(); result.save(output, format='PNG')
+            return output.getvalue()
         # Preserve original RGB pixels and intersect with any existing alpha.
         from PIL import ImageChops
         image.putalpha(ImageChops.multiply(image.getchannel('A'), mask))
@@ -148,7 +163,13 @@ def status():
 @app.post('/api/cutout')
 async def remove_background(request: Request):
     from starlette.concurrency import run_in_threadpool
-    result = await run_in_threadpool(cutout, await body(request, 32 * 1024 * 1024))
+    from fastapi.responses import JSONResponse
+    mode = request.query_params.get('mode', 'plain')
+    if mode not in ('plain', 'keep', 'split') or len(request.query_params.getlist('mode')) > 1:
+        raise HTTPException(400, '抠图模式无效')
+    data = await body(request, 32 * 1024 * 1024)
+    result = await run_in_threadpool(cutout, data) if mode == 'plain' else await run_in_threadpool(cutout, data, mode)
+    if mode == 'split': return JSONResponse(result)
     return Response(result, media_type='image/png')
 
 def compress_png(data):

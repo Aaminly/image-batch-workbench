@@ -146,6 +146,7 @@ Autosave is not a separate backup. Forced shutdowns, power loss, disk failures, 
 ## Current limitations
 
 - **No generative image editing:** no outpainting, inpainting, semantic image generation, or brush-based edge repair.
+- **Retain lettering:** enable **保留文字** in image properties to keep the original lettering with the subject; also enable **文字分层** for a separate movable transparent image layer. These options affect the next cutout only. Text detection uses on-device macOS Vision and requires Xcode command-line tools. Text extraction currently requires a reasonably uniform surrounding colour. Complex textures, tiny lettering and text overlapping a subject can fail explicitly; existing content is preserved and occluded subject pixels are never invented.
 - **Review cutouts:** complex backgrounds, hair, and transparent objects can leave artifacts or lose detail. Processing time depends on hardware and input; results are not guaranteed for every asset.
 - **Input and project limits:** up to 32 MB and 24 megapixels per input image; 120 MB per project. Embedded assets also have a Base64 length validation limit.
 - **Artboard limits:** up to 40 sizes per project, 24–6000 px per side, and 16 megapixels per output image.

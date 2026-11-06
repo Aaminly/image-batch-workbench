@@ -1,4 +1,4 @@
-import {imageSources,applyImageSource} from './image-content.js';
+import {imageSources,applyImageSource,applyTextCutout,validateTextCutoutResult,MAX_IMAGE_BYTES} from './image-content.js';
 import {randomUUID} from './uuid.js';
 import {elementFor,elementType,isTextLayer,addElement,editElement,removeElement,internElementMedia} from './elements.js';
 import {MEDIA_KEYS,contentFor,editShared,pruneMedia,SHARED_KEYS} from './shared-content.js';
@@ -105,6 +105,7 @@ function draw(paint=true){
  $('export-png').disabled=busy||!v;$('export-all').disabled=busy||!exportProject().variants.length||!!buildAssignments(exportProject()).unmatched.length;
  const selectedImage=imageSources(project,v,editor?.getSelection()),imageOriginal=selectedImage?.original,imageCutout=selectedImage?.cutout,usingCutout=selectedImage?.usingCutout;
  $('cutout').disabled=busy||!imageOriginal||!modelReady;$('use-cutout').disabled=busy||!imageCutout;$('use-original').disabled=busy||!imageOriginal;$('remove-logo').disabled=busy||!own.logo;
+ $('keep-text').disabled=busy||!imageOriginal||!modelReady;$('split-text').disabled=$('keep-text').disabled||!$('keep-text').checked||!!elementFor(v,editor?.getSelection())?.cutoutParent;
  $('use-original').classList.toggle('active',!usingCutout);$('use-cutout').classList.toggle('active',usingCutout);
  if(paint&&v&&!switching){const result=drawPreview($('preview'),project,v,assets,$('stage'),'world');displayWarnings(result.warnings);editor?.update(result.regions);$('preview-scale').textContent=`显示 ${Math.round(result.zoom*Number($('stage').dataset.zoom||1)*100)}% · 导出 ${v.width} × ${v.height} px${result.limited?' · 预览像素已限额':''}`;}
  if(!paint)editor?.refresh();
@@ -248,8 +249,8 @@ async function importImage(file,logo=false){
 for(const id of ['image-input','empty-input'])$(id).onchange=e=>{importElementImage(e.target.files[0]);e.target.value='';};$('logo-input').onchange=e=>{importImage(e.target.files[0],true);e.target.value='';};
 window.addEventListener('paste',e=>{const target=e.target;if(e.defaultPrevented||busy||booting||document.querySelector('dialog[open]')||target.isContentEditable||target.closest?.('input,textarea,select,[role=textbox]'))return;const files=Array.from(e.clipboardData?.items||[]).filter(item=>item.kind==='file'&&item.type.startsWith('image/')).map(item=>item.getAsFile()).filter(Boolean);if(!files.length)return;e.preventDefault();if(files.length!==1){notice('一次请粘贴一张图片。',true);return;}const id=editor?.getSelection();if(elementType(current(),id)==='image'){if(elementFor(current(),id))importElementImage(files[0],id);else importImage(files[0],id==='logo');}else importElementImage(files[0]);});
 $('remove-logo').onclick=async()=>{if(busy)return;sharedPatch(project,{logo:null,logoOriginal:null,logoCutout:null});await refreshAssets();changed();draw();};
-async function commitImageSource(sourceId,id,sources,sync){
- const candidate=structuredClone(project);applyImageSource(candidate,sourceId,id,sources,sync);validateProject(candidate);
+async function commitImageSource(sourceId,id,sources,sync,textResult=null){
+ const candidate=structuredClone(project);if(textResult)applyTextCutout(candidate,sourceId,id,textResult,sync);else applyImageSource(candidate,sourceId,id,sources,sync);validateProject(candidate);
  const decoded=await loadAssets(candidate);editor?.cancel();drafts.end();project=candidate;Object.assign(assets,decoded);refreshEditSnapshot();changed();editor.select(id);
 }
 async function useImageSource(cutout){
@@ -259,10 +260,12 @@ async function useImageSource(cutout){
  catch(e){notice(e.message,true);}finally{busy=false;draw();}
 }
 $('use-original').onclick=()=>useImageSource(false);$('use-cutout').onclick=()=>useImageSource(true);
+$('keep-text').onchange=()=>{if(!$('keep-text').checked)$('split-text').checked=false;draw(false);};
 $('cutout').onclick=async()=>{
  const sourceId=currentId,id=editor?.getSelection(),sources=imageSources(project,current(),id),original=sources?.original,sync=$('sync-sizes').checked,before=project;
+ const mode=$('keep-text').checked?$('split-text').checked&&!elementFor(current(),id)?.cutoutParent?'split':'keep':'plain';
  if(busy||!original||!modelReady)return;busy=true;draw();notice('正在本机高清抠图，请稍等…');$('cutout').textContent='正在抠图…';
- try{const raw=original.split(','),bytes=Uint8Array.from(atob(raw[1]),c=>c.charCodeAt(0)),input=new Blob([bytes],{type:raw[0].includes('jpeg')?'image/jpeg':'image/png'});const response=await fetch('/api/cutout',{method:'POST',headers:{'Content-Type':input.type},body:input});if(!response.ok){let error;try{error=await response.json();}catch{}throw Error(error?.detail||`服务错误 ${response.status}`);}const blob=await response.blob();if(blob.size>32*1024*1024)throw Error('抠图结果超过32 MB，原图已保留，请缩小图片后重试');const data=await readData(blob);if(project!==before||currentId!==sourceId)throw Error('当前批次或尺寸已改变，未应用抠图结果');await commitImageSource(sourceId,id,{original,cutout:data,usingCutout:true},sync);notice('抠图完成，请切换原图对照图片边缘。');}
+ try{const raw=original.split(','),bytes=Uint8Array.from(atob(raw[1]),c=>c.charCodeAt(0)),input=new Blob([bytes],{type:raw[0].includes('jpeg')?'image/jpeg':'image/png'});const response=await fetch('/api/cutout'+(mode==='plain'?'':`?mode=${mode}`),{method:'POST',headers:{'Content-Type':input.type},body:input});if(!response.ok){let error;try{error=await response.json();}catch{}throw Error(error?.detail||`服务错误 ${response.status}`);}const blob=await response.blob(),limit=mode==='split'?Math.ceil(MAX_IMAGE_BYTES/3)*8+1024:MAX_IMAGE_BYTES;if(blob.size>limit)throw Error(mode==='split'?'文字分层响应过大，原图已保留，请缩小图片后重试':'抠图结果超过32 MB，原图已保留，请缩小图片后重试');const result=mode==='split'?JSON.parse(await blob.text()):null;if(mode==='split')validateTextCutoutResult(result);const data=result?.subject??await readData(blob);if(result){const image=await loadImage(data),textImage=await loadImage(result.text);if(image.width!==result.width||image.height!==result.height||textImage.width!==result.bounds?.[2]-result.bounds?.[0]||textImage.height!==result.bounds?.[3]-result.bounds?.[1])throw Error('文字分层结果尺寸不匹配');}if(project!==before||currentId!==sourceId)throw Error('当前批次或尺寸已改变，未应用抠图结果');await commitImageSource(sourceId,id,{original,cutout:data,usingCutout:true,reprocess:true},sync,result);notice(mode==='split'?'抠图完成，已生成可单独移动的文字图片层。':'抠图完成，请切换原图对照图片边缘。');}
  catch(e){notice(e.message,true);}finally{busy=false;$('cutout').textContent='高清本地抠图';draw();}
 };
 function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}

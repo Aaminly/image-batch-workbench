@@ -35,7 +35,7 @@ export function editElement(p,sourceId,id,patch,sync=true){
  if(Object.keys(patch).some(k=>!allowed.includes(k)))throw Error('元素内容字段无效');
  if(Object.hasOwn(patch,'text')&&(typeof patch.text!=='string'||patch.text.length>2000))throw Error('文案长度或格式无效');
  for(const key of ['media','originalMedia','cutoutMedia'])if(Object.hasOwn(patch,key)&&!(key==='cutoutMedia'&&patch[key]===null)&&!Object.hasOwn(p.media||{},patch[key]))throw Error('图片素材不存在');
- for(const target of p.variants)if(target.id===sourceId||(sync&&sameEditDomain(p,source,target))){const e=elementFor(target,id);if(e){if(Object.hasOwn(patch,'media')&&!Object.hasOwn(patch,'originalMedia')){delete e.originalMedia;delete e.cutoutMedia;}Object.assign(e,patch);}}
+ for(const target of p.variants)if(target.id===sourceId||(sync&&sameEditDomain(p,source,target))){const e=elementFor(target,id);if(e){if(Object.hasOwn(patch,'media')&&!Object.hasOwn(patch,'originalMedia')){delete e.originalMedia;delete e.cutoutMedia;delete e.cutoutParent;delete e.cutoutResult;target.elements=target.elements.filter(item=>item.cutoutParent!==id);}Object.assign(e,patch);}}
 }
 export function syncElementChanges(before,after,target){
  const ratio=ratios(after,target);
@@ -53,6 +53,6 @@ export function syncElementChanges(before,after,target){
 export function removeElement(p,sourceId,id,sync=true){
  const source=p.variants.find(v=>v.id===sourceId);if(!elementFor(source,id))throw Error('请选择新增的文字、图片或按钮');
  const targets=p.variants.filter(v=>(v.id===sourceId||(sync&&sameEditDomain(p,source,v)))&&elementFor(v,id));
- for(const target of targets)target.elements=target.elements.filter(e=>e.id!==id);
+ for(const target of targets)target.elements=target.elements.filter(e=>e.id!==id&&e.cutoutParent!==id);
  pruneMedia(p);return targets.map(v=>v.id);
 }

@@ -35,4 +35,11 @@ class ImageCutoutTests(unittest.TestCase):
   p={'assets':{},'media':{'m1':'image-ref'},'variants':[{'id':'300x250','elements':None},{'id':'600x500','elements':[{'type':'image','media':'m1'}]}]}
   self.assertEqual(self.module.thumbnail(p,'300x250'),'image-ref')
 
+ def test_invalid_element_after_text_layer_returns_400_and_keeps_revision(self):
+  d=self.store.create();ref=self.store.asset(d['id'],self.png);payload=self.payload(ref);p=payload['project'];p['media']={'m1':ref}
+  self.store.save(d['id'],0,payload)
+  p['variants'][0]['elements']=[{'id':'element-text','type':'image','media':'m1','cutoutParent':'image','cutoutResult':'m1'},None]
+  with self.assertRaises(HTTPException) as error:self.store.save(d['id'],1,payload)
+  self.assertEqual(error.exception.status_code,400);self.assertEqual(self.store.get(d['id'])['revision'],1)
+
 if __name__=='__main__':unittest.main()
