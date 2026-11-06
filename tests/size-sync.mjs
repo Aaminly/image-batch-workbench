@@ -1,3 +1,4 @@
+import {importLegacyImage} from './support/select-layer.mjs';
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -7,7 +8,7 @@ page.on('dialog',d=>d.accept());
 try{
  await page.goto('http://127.0.0.1:8765');await page.waitForFunction(()=>!document.querySelector('#model-status').textContent.includes('正在检查'));await page.locator('#draft-new').click();await page.locator('#notice').filter({hasText:'已新建批次'}).waitFor({state:'attached'});
  assert.equal(await page.locator('#sync-sizes').count(),1,'应提供全尺寸同步开关');assert.equal(await page.locator('#sync-sizes').isChecked(),true,'默认勾选');assert.equal((await page.locator('.sync-toolbar label').innerText()).trim(),'同步操作同比例尺寸');
- await page.locator('#image-input').setInputFiles('tests/fixtures/layout.png');await page.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
+ await importLegacyImage(page,'tests/fixtures/layout.png');await page.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
  for(const size of ['600x900','1080x1080','970x90','1080x1920','336x280','580x400','750x200','1200x600','640x640','720x900'])await page.locator(`[data-size="${size}"]`).click();
  await page.locator('#variant-select').selectOption('300x250');
  const save=async(name)=>{const event=page.waitForEvent('download');await page.locator('#save-project').click();const d=await event;await d.saveAs(`work/${name}.json`);return JSON.parse(await fs.readFile(`work/${name}.json`,'utf8'));};

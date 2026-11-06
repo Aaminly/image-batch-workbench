@@ -1,3 +1,4 @@
+import {importLegacyImage} from './support/select-layer.mjs';
 import {chromium} from 'playwright';import assert from 'node:assert/strict';import fs from 'node:fs/promises';
 const base=process.env.STUDIO_URL||'http://127.0.0.1:18766',browser=await chromium.launch({channel:'chrome',headless:true}),ctx=await browser.newContext({acceptDownloads:true});
 const saved=p=>p.locator('#draft-status').filter({hasText:'已保存'}).waitFor({state:'attached'});
@@ -12,7 +13,7 @@ try{
  await p.route('**/api/drafts/*',async route=>{if(route.request().method()==='PUT'&&first){first=false;await route.fetch();start();await barrier;await route.abort().catch(()=>{});}else await route.continue();});
  await p.locator('#title').fill('请求中旧版本');await waiting;await p.locator('#title').fill('请求中继续编辑的最新版');await p.reload();await saved(p);finish();assert.equal(await p.locator('#title').inputValue(),'请求中继续编辑的最新版');assert.equal((await record()).project.copy.title,'请求中继续编辑的最新版');await p.unrouteAll({behavior:'ignoreErrors'});
  console.log('PASS newer pending edits survive old committed response and reload');
- await p.locator('#image-input').setInputFiles('tests/fixtures/astronaut.png');await p.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});await p.reload();await saved(p);
+ await importLegacyImage(p,'tests/fixtures/astronaut.png');await p.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});await p.reload();await saved(p);
  const image=(await record()).project.assets.original;const response=await ctx.request.get(`${base}/api/drafts/${(await record()).id}/assets/${image}`);assert.deepEqual(await response.body(),await fs.readFile('tests/fixtures/astronaut.png'));
  console.log('PASS image larger than unload request budget survives immediate reload');
  const q=await open();await p.locator('#title').fill('另一页成功保存');await saved(p);await q.locator('#title').fill('冲突页待恢复的现场');await q.locator('#draft-status').filter({hasText:'其他页面'}).waitFor({state:'attached'});await q.reload();await q.locator('#draft-status').filter({hasText:'其他页面'}).waitFor({state:'attached'});assert.equal(await q.locator('#title').inputValue(),'冲突页待恢复的现场');assert.equal((await record()).project.copy.title,'另一页成功保存');

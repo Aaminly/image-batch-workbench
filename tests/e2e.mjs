@@ -1,3 +1,4 @@
+import {importLegacyImage} from './support/select-layer.mjs';
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -9,7 +10,7 @@ const errors=[];page.on('pageerror',e=>errors.push(String(e)));
 try {
  await page.goto('http://127.0.0.1:8765');await page.locator('#draft-new').click();
  await page.getByRole('heading',{name:'图片批处理工作台',exact:true}).waitFor({timeout:4000});
- await page.locator('#image-input').setInputFiles('tests/fixtures/layout.png');
+ await importLegacyImage(page,'tests/fixtures/layout.png');
  await page.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
  await page.locator('#title').fill('好故事\n即刻开启');
  await page.locator('#subtitle').fill('每一天，都有新的精彩');
@@ -32,7 +33,7 @@ try {
  await page.locator('#title').fill('这是一段需要完整保留的很长文案'.repeat(20));
  await page.locator('#warnings').filter({hasText:'文字'}).waitFor();
  const mobile=await browser.newPage({viewport:{width:390,height:844}});await mobile.goto('http://127.0.0.1:8765');await mobile.locator('#draft-new').click();
- await mobile.locator('#image-input').setInputFiles('tests/fixtures/layout.png');await mobile.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
+ await importLegacyImage(mobile,'tests/fixtures/layout.png');await mobile.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
  await mobile.locator('#title').fill('这是一段需要完整保留的很长文案'.repeat(20));
  for(const [name,y] of [['top',0],['middle',800],['bottom',10000]]){await mobile.evaluate(y=>scrollTo(0,y),y);await mobile.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));await mobile.screenshot({path:`work/mobile-${name}.png`});}
  assert.ok(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'mobile viewport must not overflow horizontally');await mobile.close();

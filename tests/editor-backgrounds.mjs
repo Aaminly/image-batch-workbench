@@ -1,7 +1,8 @@
+import {importLegacyImage} from './support/select-layer.mjs';
 import {chromium} from 'playwright';import assert from 'node:assert/strict';import fs from 'node:fs/promises';
 const b=await chromium.launch({channel:'chrome',headless:true}),p=await b.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:2,acceptDownloads:true});p.on('dialog',d=>d.accept());
 try{
- await p.goto('http://127.0.0.1:8765');await p.locator('#image-input').setInputFiles('tests/fixtures/layout.png');await p.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});await p.locator('[data-size="970x90"]').click();
+ await p.goto('http://127.0.0.1:8765');await importLegacyImage(p,'tests/fixtures/layout.png');await p.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});await p.locator('[data-size="970x90"]').click();
  const specs=[...Array.from({length:25},(_,i)=>({name:`same-${i}.png`,w:300,h:250,color:'#ff0000'})),{name:'same-ratio.png',w:600,h:500,color:'#00ff00'},{name:'banner.png',w:970,h:90,color:'#0000ff'}];
  const data=await p.evaluate(specs=>specs.map(s=>{const c=document.createElement('canvas');c.width=s.w;c.height=s.h;c.getContext('2d').fillStyle=s.color;c.getContext('2d').fillRect(0,0,s.w,s.h);return c.toDataURL().split(',')[1];}),specs);
  await p.locator('#background-files').setInputFiles(data.map((base64,i)=>({name:specs[i].name,mimeType:'image/png',buffer:Buffer.from(base64,'base64')})));await p.locator('#notice').filter({hasText:'已导入 27 张背景'}).waitFor({state:'attached'});assert.equal(await p.locator('#background-mode').inputValue(),'matched');assert.match(await p.locator('#export-count').textContent(),/26 张成品/);

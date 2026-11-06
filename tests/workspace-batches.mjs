@@ -1,11 +1,11 @@
-import {selectLayer} from './support/select-layer.mjs';
+import {selectLayer,importLegacyImage} from './support/select-layer.mjs';
 import {chromium} from 'playwright';import assert from 'node:assert/strict';
 const base=process.env.STUDIO_URL||'http://127.0.0.1:18765';assert.notEqual(new URL(base).port,'8765');const browser=await chromium.launch({channel:'chrome',headless:true});const ctx=await browser.newContext();const p=await ctx.newPage();p.setDefaultTimeout(8000);
 const ready=()=>p.waitForFunction(()=>!document.getElementById('draft-new').disabled);
 const saved=()=>p.waitForFunction(()=>document.getElementById('draft-status').textContent.startsWith('已保存'));
 const title=async value=>{await selectLayer(p,'title');await p.locator('#title').fill(value);await p.locator('#title').blur();await saved();};
 try{
- await p.goto(base);await ready();await p.locator('#draft-new').click();await ready();const a=await p.locator('#batch-select').inputValue();await p.locator('#image-input').setInputFiles('tests/fixtures/layout.png');await ready();await title('批次A持久标题');const ar=await(await ctx.request.get(`${base}/api/drafts/${a}`)).json();
+ await p.goto(base);await ready();await p.locator('#draft-new').click();await ready();const a=await p.locator('#batch-select').inputValue();await importLegacyImage(p,'tests/fixtures/layout.png');await ready();await title('批次A持久标题');const ar=await(await ctx.request.get(`${base}/api/drafts/${a}`)).json();
  await p.locator('#draft-new').click();await ready();const b=await p.locator('#batch-select').inputValue();await title('批次B独立标题');
  const source=(await(await ctx.request.get(`${base}/api/drafts/${a}`)).json()).project.assets.original;assert.equal(source,ar.project.assets.original);assert.equal((await ctx.request.get(`${base}/api/drafts/${a}/assets/${source}`)).status(),200);
  await p.locator('#batch-select').selectOption(a);await ready();await p.waitForFunction(()=>document.getElementById('title').value==='批次A持久标题');await p.locator('#undo').click();await ready();assert.notEqual(await p.locator('#title').inputValue(),'批次A持久标题');await p.locator('#redo').click();await ready();assert.equal(await p.locator('#title').inputValue(),'批次A持久标题');

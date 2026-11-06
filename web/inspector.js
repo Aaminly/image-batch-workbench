@@ -1,6 +1,6 @@
 import {elementFor,elementType,isTextLayer} from './elements.js';
 import {sameEditDomain,groupName} from './locks.js';
-export function createInspector({getState,selectLayer,addElement}){
+export function createInspector({getState,selectLayer,addElement,replaceImage}){
  const $=id=>document.getElementById(id);let activeTab='properties',lastSelection='',paletteOpen=false;
  const typeOf=id=>elementType(getState().current,id);
  $('add-element').onclick=()=>addElement(typeOf(getState().selected)||'text');
@@ -10,7 +10,7 @@ export function createInspector({getState,selectLayer,addElement}){
  $('open-text-style').onclick=()=>palette(!paletteOpen,true);$('close-text-style').onclick=()=>palette(false,true);
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&paletteOpen){e.preventDefault();e.stopImmediatePropagation();palette(false,true);}},true);
  document.querySelectorAll('[data-element-type]').forEach(button=>button.onclick=()=>{const {selected}=getState(),type=button.dataset.elementType;tab('properties');selectLayer(typeOf(selected)===type?selected:{text:'title',image:'image',button:'cta'}[type]);});
- $('replace-image').onclick=()=>$('image-input').click();
+ $('replace-image').onclick=replaceImage;
  function tab(name){activeTab=name;for(const key of ['properties','background']){$(key+'-panel').hidden=key!==name;$('tab-'+key).setAttribute('aria-selected',String(key===name));}update();}
  for(const name of ['properties','background']){$('tab-'+name).onclick=()=>tab(name);$('tab-'+name).onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?'properties':e.key==='End'?'background':name==='properties'?'background':'properties';tab(next);$('tab-'+next).focus();}};}
 
@@ -40,12 +40,12 @@ export function createInspector({getState,selectLayer,addElement}){
   for(const key of ['x','y','width','height']){const input=$('element-'+key);input.disabled=busy;if(added?.type==='image')input.value=added[key];}
   $('replace-element-image').disabled=busy;
 
-  document.querySelectorAll('[data-layer]').forEach(button=>{const id=button.dataset.layer,e=elementFor(current,id),kind=typeOf(id);button.hidden=kind!==type;const copy=button.querySelector('.object-copy'),same=(current.elements||[]).filter(item=>item.type===kind),number=e?same.findIndex(item=>item.id===id)+(kind==='text'?3:kind==='image'?3:2):id==='title'?1:id==='subtitle'?2:1;
+  document.querySelectorAll('[data-layer]').forEach(button=>{const id=button.dataset.layer,e=elementFor(current,id),kind=typeOf(id);button.hidden=kind!==type;const copy=button.querySelector('.object-copy'),same=(current.elements||[]).filter(item=>item.type===kind),number=e?same.findIndex(item=>item.id===id)+(kind==='text'?3:kind==='image'?3:2):id==='title'?1:id==='subtitle'||id==='logo'?2:1;
    if(copy)copy.textContent=`${kind==='button'?'按钮':kind==='image'?'图片':'文字'} ${number} · ${(e?.text??content.copy[id]??'图片').replace(/\s+/g,' ').slice(0,50)}`;
    const image=button.querySelector('img');if(image){const data=e?.type==='image'?project.media[e.media]:id==='logo'?content.assets.logo:id==='image'?content.assets[content.source]:null;image.hidden=!data;if(data&&image.getAttribute('src')!==data)image.src=data;if(!data)image.removeAttribute('src');}
   });
-  $('image-tools').hidden=type!=='image'||!!added;$('main-image-tools').hidden=selected!=='image';$('logo-image-tools').hidden=selected!=='logo';$('replace-image').disabled=busy;
-  $('image-tools-title').textContent=selected==='logo'?'标识图片':'主图片';
+  $('image-tools').hidden=type!=='image';$('main-image-tools').hidden=selected!=='image';$('logo-image-tools').hidden=selected!=='logo';$('replace-image').disabled=busy;
+  $('image-tools-title').textContent='图片';
   $('selection-hint').hidden=!!selected;$('text-properties').hidden=!text;$('image-properties').hidden=selected!=='image';$('logo-properties').hidden=selected!=='logo';$('transform-properties').hidden=!selected;
   document.querySelectorAll('[data-copy]').forEach(item=>item.hidden=item.dataset.copy!==selected);$('accent').closest('label').hidden=type!=='button';
   document.querySelectorAll('[data-layer]').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.layer===selected));button.disabled=busy;});

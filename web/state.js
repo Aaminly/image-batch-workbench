@@ -78,7 +78,10 @@ export function validateProject(input,checkContent=true){
   for(const e of v.elements){
    if(!e||typeof e.id!=='string'||!/^element-[-\w]{1,80}$/.test(e.id)||elementIds.has(e.id)||!['text','button','image'].includes(e.type)||!finite(e.x,-12000,12000)||!finite(e.y,-12000,12000))throw Error('新增元素无效');
    elementIds.add(e.id);if(elementTypes.has(e.id)&&elementTypes.get(e.id)!==e.type)throw Error('同一元素的类型不一致');elementTypes.set(e.id,e.type);
-   if(e.type==='image'){if(!Object.hasOwn(p.media||{},e.media)||!finite(e.width,1,12000)||!finite(e.height,1,12000)||!finite(e.scaleX,.01,100)||!finite(e.scaleY,.01,100))throw Error('新增图片无效');}
+   if(e.type==='image'){
+    if(!Object.hasOwn(p.media||{},e.media)||!finite(e.width,1,12000)||!finite(e.height,1,12000)||!finite(e.scaleX,.01,100)||!finite(e.scaleY,.01,100))throw Error('新增图片无效');
+    if((e.originalMedia!==undefined&&!Object.hasOwn(p.media||{},e.originalMedia))||(e.cutoutMedia!=null&&!Object.hasOwn(p.media||{},e.cutoutMedia))||(e.cutoutMedia&&!e.originalMedia)||(e.originalMedia&&e.media!==e.originalMedia&&e.media!==e.cutoutMedia))throw Error('图片原图或抠图引用无效');
+   }
    else {if(typeof e.text!=='string'||e.text.length>2000||!color(e.accent))throw Error('新增文案或按钮无效');validateTextLayer(e.style);if(e.style.dx!==0||e.style.dy!==0)throw Error('新增文字位置无效');}
   }
 

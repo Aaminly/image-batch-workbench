@@ -29,6 +29,21 @@ def atomic_bytes(path,data):
 
 def atomic_json(path,value):atomic_bytes(path,json.dumps(value,ensure_ascii=False,allow_nan=False).encode())
 
+def thumbnail(project,current_id):
+    media=project.get('media',{});variants=project['variants']
+    for v in sorted(variants,key=lambda v:v['id']!=current_id):
+        content=v.get('content',{})
+        def asset(key):
+            ref=content.get(key) if key in content else project['assets'].get(key)
+            if not isinstance(ref,str):return None
+            return media.get(ref) if key in content else ref
+        source='cutout' if content.get('source',project.get('source'))=='cutout' else 'original'
+        ref=asset(source) or asset('logo')
+        if ref:return ref
+        for e in v['elements'] if isinstance(v.get('elements'),list) else []:
+            if isinstance(e,dict) and e.get('type')=='image' and isinstance(e.get('media'),str) and e['media'] in media:return media[e['media']]
+    return None
+
 class DraftStore:
     def __init__(self,root):
         self.root=Path(root);self.records=self.root/'records';self.assets=self.root/'assets'
@@ -63,7 +78,7 @@ class DraftStore:
                 try:r=json.loads(path.read_text())
                 except (OSError,ValueError):raise HTTPException(500,'草稿目录读取失败，请检查本机数据目录')
                 if r.get('deleted') or not r['project']:continue
-                p=r['project'];rows.append({'id':r['id'],'revision':r['revision'],'updated':r['updated'],'name':p.get('name') or p.get('copy',{}).get('title') or '未命名草稿','sizes':[v['id'] for v in p['variants']],'thumbnail':p['assets'].get('original')})
+                p=r['project'];rows.append({'id':r['id'],'revision':r['revision'],'updated':r['updated'],'name':p.get('name') or p.get('copy',{}).get('title') or '未命名草稿','sizes':[v['id'] for v in p['variants']],'thumbnail':thumbnail(p,r.get('ui',{}).get('currentId'))})
             return sorted(rows,key=lambda r:r['updated'],reverse=True)
     def asset(self,identifier,data):
         if len(data)>32*1024*1024:raise HTTPException(413,'草稿素材超过32 MB')
@@ -109,8 +124,21 @@ class DraftStore:
             if ui.get('currentId') not in ids or not isinstance(ui.get('excludedExportSizes'),list) or any(v not in ids for v in ui['excludedExportSizes']):raise ValueError()
             media=p.get('media',{})
             if not isinstance(media,dict) or any(not isinstance(k,str) or not re.fullmatch(r'm\d+',k) for k in media):raise ValueError()
+            if p.get('source','original') not in ('original','cutout'):raise ValueError()
+            for v in variants:
+                if not isinstance(v.get('elements',[]),list):raise ValueError()
+                for e in v.get('elements',[]):
+                    if not isinstance(e,dict):raise ValueError()
+                    if e.get('type')!='image':continue
+                    for key in ('media','originalMedia','cutoutMedia'):
+                        if key=='media' or key in e:
+                            if key=='cutoutMedia' and e[key] is None:continue
+                            if not isinstance(e.get(key),str) or e[key] not in media:raise ValueError()
+                    if e.get('cutoutMedia') and not e.get('originalMedia'):raise ValueError()
+                    if e.get('originalMedia') and e['media'] not in (e['originalMedia'],e.get('cutoutMedia')):raise ValueError()
             for content in [v.get('content',{}) for v in variants]+[p.get('sharedBaseline',{})]:
                 if not isinstance(content,dict):raise ValueError()
+                if content.get('source','original') not in ('original','cutout'):raise ValueError()
                 for key in ('original','cutout','logo','logoOriginal','logoCutout'):
                     if key in content and content[key] is not None and (not isinstance(content[key],str) or content[key] not in media):raise ValueError()
                 if 'backgrounds' in content:

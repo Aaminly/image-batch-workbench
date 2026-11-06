@@ -1,3 +1,4 @@
+import {randomUUID} from './uuid.js';
 import {pruneMedia} from './shared-content.js';
 import {defaultTextLayer,validateProject} from './state.js';
 import {sameEditDomain} from './locks.js';
@@ -17,7 +18,7 @@ export function internElementMedia(p,data){
 export function addElement(p,sourceId,type,options={},sync=true){
  if(!['text','button','image'].includes(type))throw Error('元素类型无效');
  const source=p.variants.find(v=>v.id===sourceId);if(!source)throw Error('当前尺寸不存在');
- const next=structuredClone(p),own=next.variants.find(v=>v.id===sourceId);let id;do{id='element-'+crypto.randomUUID();}while(next.variants.some(v=>elementFor(v,id)));
+ const next=structuredClone(p),own=next.variants.find(v=>v.id===sourceId);let id;do{id='element-'+randomUUID();}while(next.variants.some(v=>elementFor(v,id)));
  const e={id,type,x:source.width*.1,y:source.height*.1};
  if(type==='image'){
   if(!Number.isFinite(options.width)||!Number.isFinite(options.height)||options.width<1||options.height<1||options.width*options.height>24000000)throw Error('图片尺寸无效');
@@ -30,11 +31,11 @@ export function addElement(p,sourceId,type,options={},sync=true){
 }
 export function editElement(p,sourceId,id,patch,sync=true){
  const source=p.variants.find(v=>v.id===sourceId);if(!source||!elementFor(source,id))throw Error('元素不存在');
- const allowed=elementFor(source,id).type==='image'?'media':'text';
- if(Object.keys(patch).some(k=>k!==allowed))throw Error('元素内容字段无效');
+ const allowed=elementFor(source,id).type==='image'?['media','originalMedia','cutoutMedia']:['text'];
+ if(Object.keys(patch).some(k=>!allowed.includes(k)))throw Error('元素内容字段无效');
  if(Object.hasOwn(patch,'text')&&(typeof patch.text!=='string'||patch.text.length>2000))throw Error('文案长度或格式无效');
- if(Object.hasOwn(patch,'media')&&!Object.hasOwn(p.media||{},patch.media))throw Error('图片素材不存在');
- for(const target of p.variants)if(target.id===sourceId||(sync&&sameEditDomain(p,source,target))){const e=elementFor(target,id);if(e)Object.assign(e,patch);}
+ for(const key of ['media','originalMedia','cutoutMedia'])if(Object.hasOwn(patch,key)&&!(key==='cutoutMedia'&&patch[key]===null)&&!Object.hasOwn(p.media||{},patch[key]))throw Error('图片素材不存在');
+ for(const target of p.variants)if(target.id===sourceId||(sync&&sameEditDomain(p,source,target))){const e=elementFor(target,id);if(e){if(Object.hasOwn(patch,'media')&&!Object.hasOwn(patch,'originalMedia')){delete e.originalMedia;delete e.cutoutMedia;}Object.assign(e,patch);}}
 }
 export function syncElementChanges(before,after,target){
  const ratio=ratios(after,target);

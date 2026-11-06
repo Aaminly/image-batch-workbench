@@ -11,3 +11,10 @@ export async function selectLayer(page,id){
  }
  await target.click();
 }
+
+// Legacy-layout fixtures explicitly replace image 1; the material importer now adds images.
+export async function importLegacyImage(page,file){
+ await selectLayer(page,'image');
+ const chooser=page.waitForEvent('filechooser');await page.locator('#replace-image').click();await(await chooser).setFiles(file);
+ await page.waitForFunction(()=>!document.getElementById('project-input').disabled);
+}

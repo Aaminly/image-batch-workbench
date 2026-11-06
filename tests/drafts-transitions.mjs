@@ -1,9 +1,10 @@
+import {importLegacyImage} from './support/select-layer.mjs';
 import {chromium} from 'playwright';import assert from 'node:assert/strict';import fs from 'node:fs/promises';
 const base=process.env.STUDIO_URL||'http://127.0.0.1:18765',browser=await chromium.launch({channel:'chrome',headless:true});const ctx=await browser.newContext({acceptDownloads:true});
 const saved=p=>p.locator('#draft-status').filter({hasText:'已保存'}).waitFor({state:'attached'});
 try{
  const p=await ctx.newPage();p.setDefaultTimeout(10000);p.on('dialog',d=>d.accept());await p.goto(base);await p.waitForFunction(()=>!document.querySelector('#model-status').textContent.includes('正在检查'));await p.locator('#draft-new').click();
- await p.locator('#image-input').setInputFiles('tests/fixtures/layout.png');await saved(p);const rows=await(await ctx.request.get(`${base}/api/drafts`)).json(),id=rows[0].id;
+ await importLegacyImage(p,'tests/fixtures/layout.png');await saved(p);const rows=await(await ctx.request.get(`${base}/api/drafts`)).json(),id=rows[0].id;
  let download=p.waitForEvent('download');await p.locator('#save-project').click();const file=await download,project=JSON.parse(await fs.readFile(await file.path(),'utf8'));
  project.copy.title='导入后';project.assets.cutout=project.assets.original;project.assets.logo=project.assets.original;project.source='cutout';project.backgrounds=[{id:'bg-import',name:'背景.png',data:project.assets.original,width:600,height:500}];project.activeBackgroundId='bg-import';project.backgroundMode='current';
  await p.locator('#title').fill('导入前');await p.locator('#title').blur();await saved(p);

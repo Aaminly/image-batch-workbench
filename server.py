@@ -40,7 +40,11 @@ from archive_sessions import router as archive_router
 app.include_router(archive_router)
 from drafts import router as drafts_router
 app.include_router(drafts_router)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=['127.0.0.1', 'localhost'])
+allowed_hosts = ['127.0.0.1', 'localhost']
+if os.environ.get('STUDIO_LAN_IP'):
+    from launcher import configuration
+    allowed_hosts.append(configuration(True, os.environ['STUDIO_LAN_IP'])[1])
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 _lock = threading.Lock()
 _session = None
 

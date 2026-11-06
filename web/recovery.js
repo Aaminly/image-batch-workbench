@@ -1,15 +1,9 @@
+import {randomUUID} from './uuid.js';
 import {MEDIA_KEYS} from './shared-content.js';
-const DB='ad-studio-recovery',KEY='ad-studio-page';
+import {claimPage} from './page-claim.js';
+const DB='ad-studio-recovery';
 const request=req=>new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
 function slots(project){return [...MEDIA_KEYS.map(key=>({target:project.assets,key})),...project.backgrounds.map(target=>({target,key:'data'})),...Object.keys(project.media||{}).map(key=>({target:project.media,key}))];}
-async function claimPage(){
- let id=sessionStorage.getItem(KEY)||crypto.randomUUID();
- for(;;){
-  const claim=await new Promise((resolve,reject)=>{const finished=navigator.locks.request(`ad-studio-page:${id}`,{ifAvailable:true},async lock=>{if(!lock){resolve(null);return;}let release;const held=new Promise(done=>release=done);resolve({id,release:async()=>{release();await finished;}});await held;});finished.catch(reject);});
-  if(claim){sessionStorage.setItem(KEY,id);return claim;}
-  id=crypto.randomUUID();
- }
-}
 export async function openRecovery(){
  const claim=await claimPage(),tab=claim.id;let db,existing;
  try{
@@ -29,7 +23,7 @@ export async function openRecovery(){
   const done=transaction(['checkpoints','images'],tx=>{
    const images=tx.objectStore('images');
    for(const state of states)for(const image of state.images){
-    let key=known.get(image.data);if(!key){key=`${tab}:${crypto.randomUUID()}`;known.set(image.data,key);}const firstUse=!used.has(key);used.add(key);
+    let key=known.get(image.data);if(!key){key=`${tab}:${randomUUID()}`;known.set(image.data,key);}const firstUse=!used.has(key);used.add(key);
     if(!before.has(key)&&firstUse)images.put({key,tab,data:image.data});image.target[image.key]=key;
    }
    tx.objectStore('checkpoints').put({...meta,history:states.map(({project,ui})=>({project,ui}))},tab);

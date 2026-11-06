@@ -88,13 +88,15 @@ brew install uv pngquant
 
 Open **[http://127.0.0.1:8765](http://127.0.0.1:8765)**. Keep the terminal running and press `Ctrl+C` to stop the service.
 
+For other devices on the same LAN, use `./run.sh --lan` and open the printed `http://LAN-IP:8765` address. The localhost entry still works. Allow incoming connections on your trusted network if prompted by the system firewall. The default interface needs a private IPv4 address; restart after changing networks.
+
 `setup.sh` creates `.venv/`, installs pinned Python dependencies, and downloads the BiRefNet-General weights into `.models/`. For subsequent sessions, run `./run.sh`; on macOS, you can also double-click `启动工作台.command`.
 
 If `uv`, `pngquant`, or model weights are missing, install the prerequisites or rerun `./setup.sh`. If another instance of this workbench already uses port 8765, open its existing page. If a different program occupies the port, free it before starting.
 
 ## Workflow
 
-1. **Prepare assets:** import a subject image. For a transparent subject, run local background removal and compare the edges against the original. Manage the logo separately under the image objects in the right panel.
+1. **Prepare assets:** import images, then select any image object in the right panel for local background removal. Each image retains its own original and result; switching preserves its layout. Legacy image and logo objects are supported too. Background-library images are excluded.
 2. **Choose sizes:** add presets or custom dimensions, then focus the desired group or artboard on the canvas.
 3. **Build the layout:** select text, image, or button objects to edit copy, size, position, and style. Configure fills or image backgrounds in the background tab.
 4. **Review scope and details:** inspect synchronization targets, lock sizes or disable synchronization as needed, and check extreme aspect ratios, overflow, cropping, and resolution.
@@ -121,11 +123,13 @@ Canvas shortcuts apply outside text entry and modal interactions. Input fields r
 | Set view scale | `Ctrl / ⌘ + 0` for 100%; `Ctrl / ⌘ + 1`–`9` for 10%–90% |
 | Clear canvas selection | Click empty space or press `Escape` |
 | Nudge the selected layer | Arrow keys; hold `Shift` for larger steps |
-| Paste a subject image | Paste in the canvas area; text fields still paste text |
+| Paste an image | Replace the selected image, or add one when no image is selected; text fields still paste text |
 
 ## Local data and privacy
 
 Images travel between your browser and the local service; **they are not sent to a cloud image-processing service**. By default, the server binds only to `127.0.0.1`, validates origins and host names, and serves static files only from `web/`. This is a single-machine tool, without the accounts and permissions required for collaboration or public hosting.
+
+`--lan` listens on all IPv4 interfaces while allowing only loopback hosts and the selected LAN IP Host. It has no accounts or transport encryption: reachable devices can read and write shared server drafts. Use trusted networks only, without port forwarding or public exposure; Host validation does not replace a firewall. Browser refresh checkpoints are isolated by origin, so pending localhost edits do not migrate to the IP origin. Wait for saving to finish before switching addresses.
 
 | Location or data | Purpose |
 | --- | --- |

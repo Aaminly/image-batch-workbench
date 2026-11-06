@@ -1,7 +1,8 @@
+import {importLegacyImage} from './support/select-layer.mjs';
 import {chromium} from 'playwright';import assert from 'node:assert/strict';import fs from 'node:fs/promises';
 await fs.mkdir('work',{recursive:true});const browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:2,acceptDownloads:true});page.on('dialog',d=>d.accept());
 try{
- await page.goto('http://127.0.0.1:8765');await page.locator('#image-input').setInputFiles('tests/fixtures/layout.png');await page.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});assert.equal(await page.locator('[data-size]').count(),38);
+ await page.goto('http://127.0.0.1:8765');await importLegacyImage(page,'tests/fixtures/layout.png');await page.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});assert.equal(await page.locator('[data-size]').count(),38);
  const data=await page.evaluate(()=>['#ff0000','#0000ff'].map(color=>{const c=document.createElement('canvas');c.width=100;c.height=60;c.getContext('2d').fillStyle=color;c.getContext('2d').fillRect(0,0,100,60);return c.toDataURL().split(',')[1];}));
  await page.locator('#background-files').setInputFiles(data.map(d=>({name:'同名背景.png',mimeType:'image/png',buffer:Buffer.from(d,'base64')})));await page.locator('#notice').filter({hasText:'已导入 2 张背景'}).waitFor({state:'attached'});assert.equal(await page.locator('#background-mode').inputValue(),'matched');await page.locator('#background-mode').selectOption('all');await page.locator('#background-list .background-choice').nth(0).click();await page.locator('#export-png:not([disabled])').waitFor();assert.equal(await page.locator('#background-list .background-choice').count(),2);
  const before=await page.locator('#preview').evaluate(c=>Array.from(c.getContext('2d').getImageData(0,0,1,1).data));assert.deepEqual(before,[255,0,0,255]);

@@ -1,7 +1,7 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-import {selectLayer} from './support/select-layer.mjs';
+import {selectLayer,importLegacyImage} from './support/select-layer.mjs';
 const base=process.env.PAGES_URL||'http://127.0.0.1:18771/image-batch-workbench/';
 const b=await chromium.launch({...(process.env.CI?{}:{channel:'chrome'}),headless:true});
 try{
@@ -9,7 +9,7 @@ try{
  p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(!r.url().startsWith('blob:')&&!r.url().startsWith('data:')&&new URL(r.url()).origin!==new URL(base).origin)failed.push('external '+r.url());if(new URL(r.url()).pathname.includes('/api/'))api.push(r.url());if(r.method()!=='GET')failed.push('unexpected upload '+r.url());});p.on('requestfailed',r=>failed.push(r.url()));p.on('dialog',d=>d.accept());
  await p.goto(base);await p.waitForFunction(()=>document.getElementById('stage').dataset.canvasState==='ready');
  assert(await p.locator('.batch-switch').textContent().then(t=>t.includes('刷新重置')));
- await p.locator('#image-input').setInputFiles('tests/fixtures/layout.png');await p.waitForFunction(()=>document.getElementById('image-name').textContent==='layout.png');
+ await importLegacyImage(p,'tests/fixtures/layout.png');await p.waitForFunction(()=>document.getElementById('image-name').textContent==='layout.png');
  await p.locator('#custom-w').evaluate(e=>{for(let x=e.parentElement;x;x=x.parentElement)if(x.tagName==='DETAILS')x.open=true;});await p.locator('#custom-w').fill('600');await p.locator('#custom-h').fill('500');await p.locator('#add-size').click();
  await selectLayer(p,'title');await p.locator('#title').fill('Pages 真实编辑');await p.locator('#subtitle').focus();
  const download=async()=>{const menu=p.locator('.project-menu');if(await menu.getAttribute('open')===null)await menu.locator('summary').click();const wait=p.waitForEvent('download');await p.locator('#save-project').click();const d=await wait;assert.match(await p.locator('#save-indicator').textContent(),/JSON 已生成/);const file=await d.path();const project=JSON.parse(await fs.readFile(file,'utf8'));await menu.locator('summary').click();return project;};

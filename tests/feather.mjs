@@ -1,3 +1,4 @@
+import {importLegacyImage} from './support/select-layer.mjs';
 import {chromium} from 'playwright';import assert from 'node:assert/strict';import fs from 'node:fs/promises';
 await fs.mkdir('work',{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000},acceptDownloads:true});page.on('dialog',d=>d.accept());
@@ -21,7 +22,7 @@ try{
   return {zero,edge,transition,center,sides,hole,semi,croppedEdge,logoPixel,backgroundPixel,moveAllocs};
  });
  assert.equal(result.zero,true,'zero feather must preserve all source pixels');assert.ok(result.edge<20&&result.transition>100&&result.transition<160&&result.center===255,JSON.stringify(result));assert.ok(result.sides.every(a=>a<20));assert.equal(result.hole,0);assert.equal(result.semi,128);assert.ok(result.croppedEdge<20);assert.deepEqual(result.logoPixel,[0,0,255,255]);assert.ok(result.backgroundPixel[1]>240);assert.equal(result.moveAllocs,0);
- await page.locator('#image-input').setInputFiles('tests/fixtures/astronaut.png');await page.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
+ await importLegacyImage(page,'tests/fixtures/astronaut.png');await page.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
  await page.locator('#feather').fill('0.2');await page.locator('#feather').dispatchEvent('input');assert.equal(await page.locator('#feather-value').textContent(),'20%');
  await page.locator('[data-size="970x90"]').click();assert.equal(await page.locator('#feather').inputValue(),'0');await page.locator('#variant-select').selectOption('300x250');assert.equal(await page.locator('#feather').inputValue(),'0.2');
  const nativeSource=(await fs.readFile('tests/fixtures/astronaut.png')).toString('base64');

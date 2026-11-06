@@ -1,8 +1,9 @@
+import {importLegacyImage} from './support/select-layer.mjs';
 import {test,before,after} from 'node:test';import assert from 'node:assert/strict';import {chromium} from 'playwright';import fs from 'node:fs/promises';
 let browser;before(async()=>browser=await chromium.launch({channel:'chrome',headless:true}));after(async()=>browser.close());
 test('Retina preview redraws vectors and image at physical pixels without changing native export',async()=>{
  const p=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:2,acceptDownloads:true});p.on('dialog',d=>d.accept());
- try{await p.goto('http://127.0.0.1:8765');await p.locator('#image-input').setInputFiles('tests/fixtures/astronaut.png');await p.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
+ try{await p.goto('http://127.0.0.1:8765');await importLegacyImage(p,'tests/fixtures/astronaut.png');await p.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
  const metrics=await p.locator('#preview').evaluate(c=>{const b=c.getBoundingClientRect();return{w:c.width,h:c.height,cssW:b.width,cssH:b.height,dpr:devicePixelRatio};});
  assert.ok(Math.abs(metrics.w-metrics.cssW*2)<=1&&Math.abs(metrics.h-metrics.cssH*2)<=1,JSON.stringify(metrics));assert.ok(metrics.cssW>300,'fit preview should use available stage space');
  const d=p.waitForEvent('download');await p.locator('#export-png').click();await(await d).saveAs('work/clarity-native.png');

@@ -1,9 +1,10 @@
+import {importLegacyImage} from './support/select-layer.mjs';
 import {chromium} from 'playwright';import assert from 'node:assert/strict';import fs from 'node:fs/promises';
 const browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage({viewport:{width:1600,height:1000},acceptDownloads:true});page.setDefaultTimeout(15000);page.on('dialog',d=>d.accept());const errors=[];page.on('pageerror',e=>errors.push(e.message));
 const report={};
 const save=async(name)=>{const event=page.waitForEvent('download');await page.locator('#save-project').click();await(await event).saveAs(`work/${name}.json`);return JSON.parse(await fs.readFile(`work/${name}.json`,'utf8'));};
 try{
- await page.goto('http://127.0.0.1:8765');await page.waitForFunction(()=>!document.querySelector('#model-status').textContent.includes('正在检查'));await page.locator('#draft-new').click();await page.locator('#notice').filter({hasText:'已新建批次'}).waitFor({state:'attached'});await page.locator('#image-input').setInputFiles('tests/fixtures/layout.png');await page.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});await page.locator('#all-sizes').click();await page.locator('#variant-select').selectOption('300x250');await page.locator('#sync-sizes').check();
+ await page.goto('http://127.0.0.1:8765');await page.waitForFunction(()=>!document.querySelector('#model-status').textContent.includes('正在检查'));await page.locator('#draft-new').click();await page.locator('#notice').filter({hasText:'已新建批次'}).waitFor({state:'attached'});await importLegacyImage(page,'tests/fixtures/layout.png');await page.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});await page.locator('#all-sizes').click();await page.locator('#variant-select').selectOption('300x250');await page.locator('#sync-sizes').check();
  await page.locator('#export-none').click();await page.locator('[data-layer="title"]').click();
  const before=await save('sync-38-before');assert.equal(before.variants.length,38);
  await page.locator('#preview').focus();await page.keyboard.press('ArrowRight');

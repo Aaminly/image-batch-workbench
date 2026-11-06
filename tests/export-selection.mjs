@@ -1,3 +1,4 @@
+import {importLegacyImage} from './support/select-layer.mjs';
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -5,7 +6,7 @@ const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
  const page=await browser.newPage({acceptDownloads:true,viewport:{width:1440,height:1000}});
  await page.goto('http://127.0.0.1:8765');await page.locator('#draft-new').click();
- await page.locator('#image-input').setInputFiles('tests/fixtures/layout.png');await page.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
+ await importLegacyImage(page,'tests/fixtures/layout.png');await page.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
  await page.locator('[data-size="970x90"]').click();
  assert.equal(await page.locator('#export-sizes input:checked').count(),2);
  await page.locator('#export-sizes input[value="970x90"]').uncheck();

@@ -1,9 +1,10 @@
+import {importLegacyImage} from './support/select-layer.mjs';
 import {chromium} from 'playwright';import assert from 'node:assert/strict';import fs from 'node:fs/promises';
 await fs.mkdir('work',{recursive:true});
 const b=await chromium.launch({channel:'chrome',headless:true}),p=await b.newPage({viewport:{width:1440,height:1000},acceptDownloads:true});
 p.on('dialog',d=>d.accept());
 try{
- await p.goto('http://127.0.0.1:8765');await p.locator('#image-input').setInputFiles('tests/fixtures/layout.png');await p.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
+ await p.goto('http://127.0.0.1:8765');await importLegacyImage(p,'tests/fixtures/layout.png');await p.locator('#notice').filter({hasText:'已导入'}).waitFor({state:'attached'});
  const before=await p.locator('#preview').evaluate(c=>c.toDataURL());
  const dl=p.waitForEvent('download');await p.locator('#export-png').click();const file=await(await dl).path();const downloaded=await fs.readFile(file);assert.equal(downloaded.readUInt32BE(16),300);assert.equal(downloaded.readUInt32BE(20),250);
  await p.locator('#logo-input').setInputFiles('tests/fixtures/layout.png');await p.locator('#notice').filter({hasText:'Logo已导入'}).waitFor({state:'attached'});

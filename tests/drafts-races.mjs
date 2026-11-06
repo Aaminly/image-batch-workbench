@@ -1,3 +1,4 @@
+import {importLegacyImage} from './support/select-layer.mjs';
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -7,7 +8,7 @@ try{
  const previous=await(await context.request.get(`${base}/api/drafts`)).json();if(previous.length)await context.request.post(`${base}/api/drafts/delete`,{data:{ids:previous.map(r=>r.id)}});
  const p=await context.newPage();p.setDefaultTimeout(10000);p.on('dialog',d=>d.accept());await p.goto(base);await p.locator('#draft-new').click();
  let uploads=0;const metadata=[];p.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/assets'))uploads++;if(r.method()==='PUT'&&r.url().includes('/api/drafts/'))metadata.push(r.postDataBuffer().length);});
- await p.locator('#image-input').setInputFiles('tests/fixtures/astronaut.png');await p.locator('#draft-status').filter({hasText:'已保存'}).waitFor({state:'attached'});const id=(await(await context.request.get(`${base}/api/drafts`)).json())[0].id;ids.add(id);
+ await importLegacyImage(p,'tests/fixtures/astronaut.png');await p.locator('#draft-status').filter({hasText:'已保存'}).waitFor({state:'attached'});const id=(await(await context.request.get(`${base}/api/drafts`)).json())[0].id;ids.add(id);
  let release,started;const held=new Promise(r=>release=r),start=new Promise(r=>started=r);let first=true;
  await p.route(`${base}/api/drafts/${id}`,async route=>{if(route.request().method()==='PUT'&&first){first=false;started();await held;}await route.continue();});
  await p.locator('#title').fill('保存中的第一个版本');await start;await p.locator('#title').fill('保存期间继续编辑的最新版');release();await p.locator('#draft-status').filter({hasText:'已保存'}).waitFor({state:'attached'});await p.unroute(`${base}/api/drafts/${id}`);

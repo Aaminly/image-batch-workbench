@@ -1,10 +1,10 @@
-import {selectLayer} from './support/select-layer.mjs';
+import {selectLayer,importLegacyImage} from './support/select-layer.mjs';
 import {chromium} from 'playwright';import assert from 'node:assert/strict';import fs from 'node:fs/promises';
 const url=process.env.STUDIO_URL||'http://127.0.0.1:18765';assert.notEqual(new URL(url).port,'8765');await fs.mkdir('work/canvas-shortcuts',{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true}),p=await browser.newPage({viewport:{width:1512,height:982}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
 const zoom=()=>p.locator('#stage').evaluate(e=>Number(e.dataset.zoom));const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-8,`${a} ≠ ${b}`);
 try{
- await p.goto(url);await p.waitForFunction(()=>!document.getElementById('draft-new').disabled);await p.locator('#draft-new').click();await p.waitForFunction(()=>!document.getElementById('draft-new').disabled);await p.locator('#image-input').setInputFiles('tests/fixtures/layout.png');await p.waitForFunction(()=>!document.getElementById('export-png').disabled);
+ await p.goto(url);await p.waitForFunction(()=>!document.getElementById('draft-new').disabled);await p.locator('#draft-new').click();await p.waitForFunction(()=>!document.getElementById('draft-new').disabled);await importLegacyImage(p,'tests/fixtures/layout.png');await p.waitForFunction(()=>!document.getElementById('export-png').disabled);
  await p.waitForFunction(()=>document.getElementById('draft-status').textContent.startsWith('已保存'));const batch=await p.locator('#batch-select').inputValue(),recordBefore=await(await p.request.get(`${url}/api/drafts/${batch}`)).json();
  await selectLayer(p,'title');await p.locator('#stage').focus();
  const browserView=await p.evaluate(()=>({width:innerWidth,dpr:devicePixelRatio,scale:visualViewport.scale}));const original=await zoom();await p.keyboard.press('Control+Equal');close(await zoom(),original*1.2);

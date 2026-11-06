@@ -1,3 +1,4 @@
+import {randomUUID} from './uuid.js';
 import {MEDIA_KEYS} from './shared-content.js';
 import {createHistory} from './history.js';
 import {openRecovery} from './recovery.js';
@@ -50,7 +51,7 @@ export function createDrafts({snapshot,isBusy,status,saved,historyChanged=()=>{}
      if(!ref){const result=await draftRequest(`/${id}/assets`,{method:'POST',body:await dataBlob(image.data)});ref=result.ref;refs.set(image.data,ref);}
      image.target[image.key]=ref;
     }
-    const token=crypto.randomUUID().replaceAll('-','');inFlight={token,version:targetVersion,revision};await checkpoint();
+    const token=randomUUID().replaceAll('-','');inFlight={token,version:targetVersion,revision};await checkpoint();
     const result=await draftRequest(`/${id}`,jsonOptions('PUT',{...states[cursor],images:undefined,history:states.map(({project,ui})=>({project,ui})),cursor,revision,commitId:token}));
     revision=result.revision;stored=targetVersion;inFlight=null;await recovery.acknowledge(targetVersion,revision,token,version);refs=new Map(states.flatMap(state=>state.images.map(image=>[image.data,refs.get(image.data)])));
     if(stored===version){status(`已保存 · ${new Date(result.updated*1000).toLocaleTimeString()}`);saved();}
